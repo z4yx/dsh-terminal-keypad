@@ -74,6 +74,12 @@ Tap **Ctrl** — it highlights — and the next key is sent with Control held:
 Ctrl resets after one use; tap it again to cancel. Typing anywhere outside the
 terminal is never touched.
 
+### First-run hint
+
+The first time the pad appears it shows a small diagram of the two slide
+gestures: arrows outward for the pager keys, and the symbol key upward for the
+symbol picker. Press **Got it** and it stays away for good.
+
 ### Move it where you want
 
 Press and hold the centre **Esc** key and drag. Once the finger has moved a few
@@ -171,6 +177,7 @@ Constants at the top of `client.js`:
 | `REPEAT_ACCEL` | 0.85 | period multiplier per repeat |
 | `OFFSET_KEY` | `dsh-terminal-keypad:offset.v1` | `localStorage` key of the drag offset |
 | `SYMBOL_KEY` | `dsh-terminal-keypad:symbol.v1` | `localStorage` key of the chosen symbol |
+| `HINT_KEY` | `dsh-terminal-keypad:hint.v1` | `localStorage` key that dismisses the first-run hint |
 
 </details>
 

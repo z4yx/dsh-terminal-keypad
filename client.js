@@ -45,6 +45,10 @@ window.__ModuleLoader__.load({
       'aria.end': 'End 键（行尾）',
       'aria.pageup': 'Page Up 键（上翻页）',
       'aria.pagedown': 'Page Down 键（下翻页）',
+      'hint.title': '新手提示',
+      'hint.arrows': '从方向键向外滑动：',
+      'hint.symbol': '从符号键向上滑动可切换符号',
+      'hint.dismiss': '知道了',
     }
 
     /** English copy. */
@@ -64,6 +68,10 @@ window.__ModuleLoader__.load({
       'aria.end': 'End (end of line)',
       'aria.pageup': 'Page Up',
       'aria.pagedown': 'Page Down',
+      'hint.title': 'First-time tip',
+      'hint.arrows': 'Slide outward from an arrow key:',
+      'hint.symbol': 'Slide up on the symbol key to switch symbols',
+      'hint.dismiss': 'Got it',
     }
 
     /** Solid triangles, so the arrow keys stay crisp at any font or zoom. */
@@ -129,6 +137,11 @@ window.__ModuleLoader__.load({
     const MENU_HEIGHT = (MENU_CELL * 5) + (MENU_GAP * 4) + (MENU_PAD * 2)
     /** Local storage key of the symbol the key currently holds. */
     const SYMBOL_KEY = 'dsh-terminal-keypad:symbol.v1'
+    /** Local storage key of the dismissed first-run hint. */
+    const HINT_KEY = 'dsh-terminal-keypad:hint.v1'
+    /** The hint's box, used to keep it inside the visible area. */
+    const HINT_WIDTH = 232
+    const HINT_HEIGHT = 214
 
     /**
      * Delay before an arrow sends. A touch that slides outward within this
@@ -185,6 +198,34 @@ window.__ModuleLoader__.load({
       'background:color-mix(in srgb,var(--dsw-alias-brand-primary) 28%,transparent)}',
       '.dsh-terminal-keypad__key.dsh-terminal-keypad__key--swipe{border-color:var(--dsw-alias-brand-primary);',
       'background:color-mix(in srgb,var(--dsw-alias-brand-primary) 30%,transparent)}',
+      '.dsh-terminal-keypad__hint{position:absolute;width:', HINT_WIDTH, 'px;box-sizing:border-box;padding:10px 12px;',
+      'border-radius:12px;border:1px solid color-mix(in srgb,var(--dsw-alias-border-l2) 70%,transparent);',
+      'background:color-mix(in srgb,var(--dsw-alias-bg-overlay) 90%,transparent);',
+      '-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);box-shadow:0 8px 24px rgba(0,0,0,.2);',
+      'color:var(--dsw-alias-label-primary);font-size:11px;line-height:1.45;z-index:2}',
+      '.dsh-terminal-keypad__hint-title{font-weight:600;margin-bottom:4px}',
+      '.dsh-terminal-keypad__hint-caption{color:var(--dsw-alias-label-secondary);font-size:10px}',
+      '.dsh-terminal-keypad__hint-map{display:grid;grid-template-columns:auto 1fr auto;grid-template-rows:auto auto auto;',
+      'align-items:center;justify-items:center;gap:2px 6px;margin:4px 0 6px}',
+      '.dsh-terminal-keypad__hint-note{font-size:10px;color:var(--dsw-alias-label-secondary);white-space:nowrap}',
+      '.dsh-terminal-keypad__hint-note--top{grid-area:1/2}',
+      '.dsh-terminal-keypad__hint-note--left{grid-area:2/1;justify-self:end}',
+      '.dsh-terminal-keypad__hint-note--right{grid-area:2/3;justify-self:start}',
+      '.dsh-terminal-keypad__hint-note--bottom{grid-area:3/2}',
+      '.dsh-terminal-keypad__hint-pad{grid-area:2/2;display:grid;grid-template-columns:repeat(3,20px);grid-auto-rows:20px;gap:2px}',
+      '.dsh-terminal-keypad__hint-cell{display:flex;align-items:center;justify-content:center;',
+      'border:1px solid color-mix(in srgb,var(--dsw-alias-border-l2) 55%,transparent);border-radius:4px;',
+      'font-size:7.5px;letter-spacing:-.02em;color:var(--dsw-alias-label-primary)}',
+      '.dsh-terminal-keypad__hint-symbol{display:flex;align-items:center;gap:4px;margin-bottom:6px;',
+      'font-size:10px;color:var(--dsw-alias-label-secondary)}',
+      '.dsh-terminal-keypad__hint-chip{display:flex;align-items:center;justify-content:center;width:20px;height:20px;',
+      'border:1px solid color-mix(in srgb,var(--dsw-alias-border-l2) 55%,transparent);border-radius:4px;',
+      'font-size:10px;color:var(--dsw-alias-label-primary)}',
+      '.dsh-terminal-keypad__hint-up{font-size:12px;line-height:1}',
+      '.dsh-terminal-keypad__hint-button{width:100%;height:28px;border:1px solid color-mix(in srgb,var(--dsw-alias-border-l2) 70%,transparent);',
+      'border-radius:8px;background:color-mix(in srgb,var(--dsw-alias-brand-primary) 18%,transparent);',
+      'color:var(--dsw-alias-label-primary);font-family:inherit;font-size:11px;font-weight:600;cursor:pointer;touch-action:manipulation}',
+      '.dsh-terminal-keypad__hint-button:hover{background:color-mix(in srgb,var(--dsw-alias-brand-primary) 30%,transparent)}',
     ].join('')
 
     /**
@@ -529,6 +570,27 @@ window.__ModuleLoader__.load({
     }
 
     /**
+     * Whether the first-run hint was already dismissed.
+     * @returns true when the user closed it before.
+     */
+    function readHintDismissed() {
+      try {
+        return window.localStorage.getItem(HINT_KEY) === '1'
+      } catch (error) {
+        return false
+      }
+    }
+
+    /** Remember that the first-run hint was dismissed. */
+    function saveHintDismissed() {
+      try {
+        window.localStorage.setItem(HINT_KEY, '1')
+      } catch (error) {
+        // A full or blocked storage only means the hint returns next time.
+      }
+    }
+
+    /**
      * The pad's default spot: inside the terminal's lower-right corner.
      * @param box - the visible terminal rectangle, or null for the screen corner.
      * @param viewport - the visual viewport box.
@@ -580,6 +642,8 @@ window.__ModuleLoader__.load({
       const [menuOpen, setMenuOpen] = React.useState(false)
       /** The picker symbol under the finger while the picker is open. */
       const [preview, setPreview] = React.useState(null)
+      /** Whether the first-run hint is still showing. */
+      const [hint, setHint] = React.useState(() => !readHintDismissed())
       /** The running auto-repeat of a held arrow key, or null. */
       const hold = React.useRef(null)
       /** Latest rendered geometry, so a drag starts from what the user sees. */
@@ -775,6 +839,12 @@ window.__ModuleLoader__.load({
         state.timer = window.setTimeout(startRepeat, TAP_GRACE)
       }, [armed, press, setControl, stopHold, symbol, sendArrow, sendSwipe])
 
+      /** Close the first-run hint for good. */
+      const dismissHint = () => {
+        setHint(false)
+        saveHintDismissed()
+      }
+
       /**
        * The centre key is a press of Escape until the finger travels: past
        * {@link DRAG_DISTANCE} the press becomes a drag of the whole pad and no
@@ -909,6 +979,15 @@ window.__ModuleLoader__.load({
         }
       }
 
+      const hintStyle = hint && !menuOpen
+        ? {
+          left: Math.round(clamp(position.left + SIZE - HINT_WIDTH, viewport.left + 8, viewport.left + viewport.width - HINT_WIDTH - 8) - position.left),
+          top: Math.round((position.top - HINT_HEIGHT - 8 >= viewport.top + 8
+            ? position.top - HINT_HEIGHT - 8
+            : position.top + SIZE + 8) - position.top),
+        }
+        : null
+
       const menuStyle = menuOpen
         ? {
           left: Math.round(clamp(position.left, viewport.left + 8, viewport.left + viewport.width - MENU_WIDTH - 8) - position.left),
@@ -941,7 +1020,37 @@ window.__ModuleLoader__.load({
             className: classes.join(' '),
             'data-symbol': item,
           }, item)
-        })) : null),
+        })) : null, hint && !menuOpen ? h('div', {
+          key: 'hint',
+          className: 'dsh-terminal-keypad__hint',
+          role: 'dialog',
+          'aria-label': t('hint.title'),
+          'data-terminal-keypad-hint': '',
+          style: hintStyle,
+        },
+        h('div', { className: 'dsh-terminal-keypad__hint-title' }, t('hint.title')),
+        h('div', { className: 'dsh-terminal-keypad__hint-caption' }, t('hint.arrows')),
+        h('div', { className: 'dsh-terminal-keypad__hint-map', 'aria-hidden': 'true' },
+          h('span', { className: 'dsh-terminal-keypad__hint-note dsh-terminal-keypad__hint-note--top' }, 'PgUp'),
+          h('span', { className: 'dsh-terminal-keypad__hint-note dsh-terminal-keypad__hint-note--left' }, 'Home'),
+          h('div', { className: 'dsh-terminal-keypad__hint-pad' },
+            ['Tab', '\u25B2', shownSymbol, '\u25C0', 'Esc', '\u25B6', 'Ctrl', '\u25BC', '\u21B5'].map((text, index) => h('span', {
+              key: index,
+              className: 'dsh-terminal-keypad__hint-cell',
+            }, text))),
+          h('span', { className: 'dsh-terminal-keypad__hint-note dsh-terminal-keypad__hint-note--right' }, 'End'),
+          h('span', { className: 'dsh-terminal-keypad__hint-note dsh-terminal-keypad__hint-note--bottom' }, 'PgDn'),
+        ),
+        h('div', { className: 'dsh-terminal-keypad__hint-symbol' },
+          h('span', { className: 'dsh-terminal-keypad__hint-chip' }, shownSymbol),
+          h('span', { className: 'dsh-terminal-keypad__hint-up', 'aria-hidden': 'true' }, '\u2191'),
+          h('span', null, t('hint.symbol'))),
+        h('button', {
+          type: 'button',
+          className: 'dsh-terminal-keypad__hint-button',
+          onClick: dismissHint,
+          onPointerDown: (event) => event.stopPropagation(),
+        }, t('hint.dismiss'))) : null),
       ), document.body)
     }
 

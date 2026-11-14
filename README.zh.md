@@ -67,6 +67,11 @@
 
 Ctrl 用过一次后自动复位，再点一次可取消。焦点在终端以外时完全不拦截输入。
 
+### 新手提示
+
+面板第一次出现时会展示一张小图示：方向键向外滑对应翻页键，符号键向上滑对应
+符号选择。点「知道了」后就不再出现。
+
 ### 随处移动
 
 按住中间的 **Esc** 键拖动即可。手指移动超过几个像素后，这次按压就变成拖动，
@@ -157,6 +162,7 @@ plugin_manager  action=remove_bundle  target=dsh-terminal-keypad
 | `REPEAT_ACCEL` | 0.85 | 每次重复的间隔乘数 |
 | `OFFSET_KEY` | `dsh-terminal-keypad:offset.v1` | 拖动偏移的 `localStorage` 键 |
 | `SYMBOL_KEY` | `dsh-terminal-keypad:symbol.v1` | 所选符号的 `localStorage` 键 |
+| `HINT_KEY` | `dsh-terminal-keypad:hint.v1` | 新手提示已关闭的 `localStorage` 键 |
 
 </details>
 
