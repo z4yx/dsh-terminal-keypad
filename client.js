@@ -107,7 +107,7 @@ window.__ModuleLoader__.load({
       right: { text: 'End', label: 'aria.end', data: '\u001b[F' },
     }
     /** How far the pointer must travel outward before the arrow turns into its function key. */
-    const SWIPE_DISTANCE = 26
+    const SWIPE_DISTANCE = 13
     /**
      * Delay before an arrow sends. A touch that slides outward within this
      * window must not also send the arrow: in a shell, a stray Up rewrites the
