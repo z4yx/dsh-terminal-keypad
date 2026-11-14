@@ -3,9 +3,9 @@
 English | [中文](README.zh.md)
 
 A floating, almost transparent keypad for the DSH Web terminal. It supplies the
-keys a phone's soft keyboard does not have — **Esc**, **Tab**, **Ctrl**, **`|`**
-and the four arrow keys — and turns an outward slide on an arrow into
-**Home / End / Page Up / Page Down**.
+keys a phone's soft keyboard does not have — **Esc**, **Tab**, **Ctrl**, **Enter**,
+a switchable symbol key and the four arrow keys — and turns an outward slide on
+an arrow into **Home / End / Page Up / Page Down**.
 
 ![The keypad floating over a bash terminal on a phone, just above the soft keyboard](doc/Screenshot_2026-11-14.jpg)
 
@@ -17,24 +17,25 @@ and the four arrow keys — and turns an outward slide on an arrow into
       ├─────┼─────┼─────┤
       │  ◀  │ Esc │  ▶  │
       ├─────┼─────┼─────┤
-      │Ctrl │  ▼  │ ⠿   │
+      │Ctrl │  ▼  │  ↵  │
       └─────┴─────┴─────┘
 ```
 
 The four arrow keys form a plus around **Esc**. **Tab** sits in the upper-left
-corner, **`|`** in the upper-right, **Ctrl** in the lower-left, and the
-lower-right cell is the drag grip.
+corner, the symbol key in the upper-right, **Ctrl** in the lower-left and
+**Enter** in the lower-right. The centre **Esc** key doubles as the pad's drag
+handle.
 
 ## What you can do
 
 | Cell | Tap / press | Hold | Slide outward, then release |
 |---|---|---|---|
 | **▲ ▼ ◀ ▶** | move the cursor | keep moving | **Page Up / Page Down / Home / End** |
-| **Esc** | send Escape | — | — |
+| **Esc** | send Escape | hold and move to drag the pad | — |
 | **Tab** | send Tab | — | — |
 | **`\|`** | type the current symbol | — | slide up, then release on a symbol |
 | **Ctrl** | arm Ctrl | — | — |
-| **⠿** | — | drag the pad | — |
+| **↵** | send Enter | — | — |
 
 ### Hold an arrow to repeat it
 
@@ -75,8 +76,10 @@ terminal is never touched.
 
 ### Move it where you want
 
-Drag the **⠿** grip. The pad follows your finger, always stays on screen
-(including above the soft keyboard), and remembers where you left it.
+Press and hold the centre **Esc** key and drag. Once the finger has moved a few
+pixels the press becomes a drag and no Escape is sent; a tap still sends Escape.
+The pad follows your finger, always stays on screen (including above the soft
+keyboard), and remembers where you left it.
 
 ## Appearance
 
@@ -137,6 +140,7 @@ plugin_manager  action=remove_bundle  target=dsh-terminal-keypad
 |---|---|
 | Esc | `ESC` |
 | Tab | `\t` |
+| Enter | `\r` |
 | `\|` | the symbol the key holds (`\|` by default) |
 | ▲ ▼ ◀ ▶ | `ESC[A`…`ESC[D`, or `ESC OA`…`ESC OD` under DECCKM |
 | Ctrl + arrow | `ESC[1;5A` … `ESC[1;5D` |
@@ -161,6 +165,7 @@ Constants at the top of `client.js`:
 | `CELL` / `GAP` / `INSET` | 36 / 5 / 12 | cell size, gap and default inset, in px |
 | `TAP_GRACE` | 90 ms | delay before an arrow sends, so a slide can replace it |
 | `SWIPE_DISTANCE` | 13 px | outward travel that turns an arrow into its function key |
+| `DRAG_DISTANCE` | 8 px | movement that turns a press on the centre key into a pad drag |
 | `REPEAT_DELAY` | 420 ms | delay before a held arrow starts repeating |
 | `REPEAT_START` / `REPEAT_MIN` | 160 / 80 ms | first repeat period / fastest period |
 | `REPEAT_ACCEL` | 0.85 | period multiplier per repeat |

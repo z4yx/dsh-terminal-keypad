@@ -31,16 +31,16 @@ window.__ModuleLoader__.load({
     /** Simplified Chinese copy. */
     const zh = {
       label: '终端按键面板',
-      'aria.escape': 'Esc 键',
+      'aria.escape': 'Esc 键（按住拖动可移动面板）',
       'aria.tab': 'Tab 键',
-      'aria.control': 'Ctrl 修饰键，先按它，再按方向键、竖线或直接敲字母',
+      'aria.control': 'Ctrl 修饰键，先按它，再按方向键、符号键或直接敲字母',
+      'aria.enter': '回车键',
       'aria.symbol': '符号 {symbol}，上滑可选择其它终端符号',
       'aria.symbolMenu': '选择终端符号',
       'aria.up': '上方向键',
       'aria.down': '下方向键',
       'aria.left': '左方向键',
       'aria.right': '右方向键',
-      'aria.drag': '拖动移动按键面板',
       'aria.home': 'Home 键（行首）',
       'aria.end': 'End 键（行尾）',
       'aria.pageup': 'Page Up 键（上翻页）',
@@ -50,16 +50,16 @@ window.__ModuleLoader__.load({
     /** English copy. */
     const en = {
       label: 'Terminal keypad',
-      'aria.escape': 'Escape',
+      'aria.escape': 'Escape; hold and drag to move the keypad',
       'aria.tab': 'Tab',
-      'aria.control': 'Control modifier: arm it, then press an arrow or the pipe key, or type a character',
+      'aria.control': 'Control modifier: arm it, then press an arrow, the symbol key, or type a character',
+      'aria.enter': 'Enter',
       'aria.symbol': 'Symbol {symbol}; slide up to pick another terminal symbol',
       'aria.symbolMenu': 'Choose a terminal symbol',
       'aria.up': 'Arrow up',
       'aria.down': 'Arrow down',
       'aria.left': 'Arrow left',
       'aria.right': 'Arrow right',
-      'aria.drag': 'Drag to move the keypad',
       'aria.home': 'Home (start of line)',
       'aria.end': 'End (end of line)',
       'aria.pageup': 'Page Up',
@@ -83,14 +83,15 @@ window.__ModuleLoader__.load({
       escape: { text: 'Esc', label: 'aria.escape', plain: '\u001b', ctrl: '\u001b' },
       right: { arrow: true, label: 'aria.right', key: 'ArrowRight', code: 'ArrowRight', keyCode: 39, plain: '\u001b[C', ctrl: '\u001b[1;5C' },
       control: { text: 'Ctrl', label: 'aria.control', sticky: true },
+      enter: { icon: 'enter', label: 'aria.enter', plain: '\r' },
       down: { arrow: true, label: 'aria.down', key: 'ArrowDown', code: 'ArrowDown', keyCode: 40, plain: '\u001b[B', ctrl: '\u001b[1;5B' },
     }
 
-    /** The plus: arrows around Esc; Tab, | and Ctrl in the free corners; a grip last. */
+    /** The plus: arrows around Esc; Tab, the symbol key and Ctrl in the corners, Enter last. */
     const LAYOUT = [
       ['tab', 'up', 'pipe'],
       ['left', 'escape', 'right'],
-      ['control', 'down', 'grip'],
+      ['control', 'down', 'enter'],
     ]
 
     /** Cell size, gap and inset from the terminal's lower-right corner, in CSS pixels. */
@@ -110,6 +111,8 @@ window.__ModuleLoader__.load({
     }
     /** How far the pointer must travel outward before the arrow turns into its function key. */
     const SWIPE_DISTANCE = 13
+    /** Movement that turns a press on the centre key into a drag instead of Escape. */
+    const DRAG_DISTANCE = 8
     /** The terminal symbols the key can hold; the current one is its byte. */
     const SYMBOLS = [
       '|', '&', ';', '<', '>', '~',
@@ -148,7 +151,7 @@ window.__ModuleLoader__.load({
     const STYLE = [
       '.dsh-terminal-keypad{position:fixed;z-index:1000;display:grid;',
       'grid-template-columns:repeat(3,', CELL, 'px);grid-template-rows:repeat(3,', CELL, 'px);',
-      'grid-template-areas:"tab up pipe" "left escape right" "control down grip";gap:', GAP, 'px;',
+      'grid-template-areas:"tab up pipe" "left escape right" "control down enter";gap:', GAP, 'px;',
       'user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;touch-action:none}',
       '.dsh-terminal-keypad__key{box-sizing:border-box;display:flex;align-items:center;justify-content:center;',
       'width:', CELL, 'px;height:', CELL, 'px;padding:0;border-radius:9px;',
@@ -182,12 +185,6 @@ window.__ModuleLoader__.load({
       'background:color-mix(in srgb,var(--dsw-alias-brand-primary) 28%,transparent)}',
       '.dsh-terminal-keypad__key.dsh-terminal-keypad__key--swipe{border-color:var(--dsw-alias-brand-primary);',
       'background:color-mix(in srgb,var(--dsw-alias-brand-primary) 30%,transparent)}',
-      '.dsh-terminal-keypad__grip{display:flex;align-items:center;justify-content:center;box-sizing:border-box;',
-      'width:', CELL, 'px;height:', CELL, 'px;padding:0;border:0;border-radius:9px;background:transparent;',
-      'color:var(--dsw-alias-label-secondary);opacity:.55;cursor:grab;touch-action:none;',
-      'transition:opacity 120ms ease,background-color 120ms ease}',
-      '.dsh-terminal-keypad__grip:hover{opacity:.9;background:color-mix(in srgb,var(--dsw-alias-bg-overlay) 26%,transparent)}',
-      '.dsh-terminal-keypad__grip:active{cursor:grabbing;opacity:1}',
     ].join('')
 
     /**
@@ -778,7 +775,11 @@ window.__ModuleLoader__.load({
         state.timer = window.setTimeout(startRepeat, TAP_GRACE)
       }, [armed, press, setControl, stopHold, symbol, sendArrow, sendSwipe])
 
-      /** Begin dragging from the grip; the keys keep their press-to-send behaviour. */
+      /**
+       * The centre key is a press of Escape until the finger travels: past
+       * {@link DRAG_DISTANCE} the press becomes a drag of the whole pad and no
+       * Escape is sent.
+       */
       const startDrag = (event) => {
         if (event.button !== 0) return
         event.preventDefault()
@@ -791,36 +792,46 @@ window.__ModuleLoader__.load({
           startTop: geometry.current.top,
           baseLeft: geometry.current.baseLeft,
           baseTop: geometry.current.baseTop,
+          moved: false,
         }
         if (typeof event.currentTarget.setPointerCapture === 'function') {
           event.currentTarget.setPointerCapture(event.pointerId)
         }
       }
 
-      /** Follow the pointer, clamped so the pad cannot leave the screen. */
+      /** Follow the pointer once the press has become a drag, clamped to the screen. */
       const moveDrag = (event) => {
         const state = drag.current
         if (state === null || event.pointerId !== state.pointerId) return
+        const dx = event.clientX - state.startX
+        const dy = event.clientY - state.startY
+        if (!state.moved) {
+          if (Math.hypot(dx, dy) < DRAG_DISTANCE) return
+          state.moved = true
+        }
         event.preventDefault()
-        const next = clampPosition(
-          state.startLeft + (event.clientX - state.startX),
-          state.startTop + (event.clientY - state.startY),
-          readViewport(),
-        )
+        const next = clampPosition(state.startLeft + dx, state.startTop + dy, readViewport())
         const moved = { x: next.left - state.baseLeft, y: next.top - state.baseTop }
         offsetRef.current = moved
         setOffset(moved)
       }
 
-      /** Finish the drag and remember where the pad landed. */
-      const endDrag = (event) => {
+      /** Finish the press: keep the new place after a drag, send Escape after a tap. */
+      const finishDrag = (event, send) => {
         const state = drag.current
-        if (state === null || event.pointerId !== state.pointerId) return
+        if (state === null) return
+        if (event.pointerId !== undefined && event.pointerId !== state.pointerId) return
         drag.current = null
-        if (typeof event.currentTarget.releasePointerCapture === 'function') {
-          event.currentTarget.releasePointerCapture(event.pointerId)
+        const moved = state.moved
+        if (moved) saveOffset(offsetRef.current)
+        try {
+          if (typeof event.currentTarget.releasePointerCapture === 'function') {
+            event.currentTarget.releasePointerCapture(event.pointerId)
+          }
+        } catch (error) {
+          // The pointer can already be gone; nothing else depends on the capture.
         }
-        saveOffset(offsetRef.current)
+        if (!moved && send) activate('escape', event)
       }
 
       if (target === null || box === null) return null
@@ -834,32 +845,11 @@ window.__ModuleLoader__.load({
       const cells = []
       for (const row of LAYOUT) {
         for (const id of row) {
-          if (id === 'grip') {
-            cells.push(h('button', {
-              key: 'grip',
-              type: 'button',
-              className: 'dsh-terminal-keypad__grip',
-              style: { gridArea: 'grip' },
-              title: t('aria.drag'),
-              'aria-label': t('aria.drag'),
-              onPointerDown: startDrag,
-              onPointerMove: moveDrag,
-              onPointerUp: endDrag,
-              onPointerCancel: endDrag,
-              onContextMenu: (event) => event.preventDefault(),
-            }, h('svg', {
-              className: 'dsh-terminal-keypad__arrow',
-              viewBox: '0 0 16 16',
-              'aria-hidden': 'true',
-              focusable: 'false',
-            }, [[5, 4], [11, 4], [5, 8], [11, 8], [5, 12], [11, 12]].map(([cx, cy], index) => h('circle', {
-              key: index, cx, cy, r: 1.4, fill: 'currentColor',
-            })))))
-            continue
-          }
+          if (id === null) continue
           const key = KEYS[id]
           const swipe = SWIPE_KEYS[id]
           const showing = swiped === id && swipe !== undefined
+          const center = id === 'escape'
           const label = key.symbol === true ? t(key.label, { symbol: shownSymbol }) : t(key.label)
           const glyph = showing
             ? h('span', { className: 'dsh-terminal-keypad__swipe' }, swipe.text)
@@ -872,7 +862,30 @@ window.__ModuleLoader__.load({
                   'aria-hidden': 'true',
                   focusable: 'false',
                 }, h('path', { d: ARROW_PATHS[id], fill: 'currentColor' }))
-                : key.text
+                : key.icon === 'enter'
+                  ? h('svg', {
+                    className: 'dsh-terminal-keypad__arrow',
+                    viewBox: '0 0 16 16',
+                    'aria-hidden': 'true',
+                    focusable: 'false',
+                  },
+                  h('path', {
+                    d: 'M12.5 3.5V9.5H5',
+                    fill: 'none',
+                    stroke: 'currentColor',
+                    strokeWidth: 1.6,
+                    strokeLinecap: 'round',
+                    strokeLinejoin: 'round',
+                  }),
+                  h('path', {
+                    d: 'M8 6.5 4.5 9.5 8 12.5',
+                    fill: 'none',
+                    stroke: 'currentColor',
+                    strokeWidth: 1.6,
+                    strokeLinecap: 'round',
+                    strokeLinejoin: 'round',
+                  }))
+                  : key.text
           cells.push(h('button', {
             key: id,
             type: 'button',
@@ -885,8 +898,12 @@ window.__ModuleLoader__.load({
             'aria-pressed': key.sticky === true ? String(armed) : undefined,
             onPointerDown: (event) => {
               event.preventDefault()
-              activate(id, event)
+              if (center) startDrag(event)
+              else activate(id, event)
             },
+            onPointerMove: center ? moveDrag : undefined,
+            onPointerUp: center ? (event) => finishDrag(event, true) : undefined,
+            onPointerCancel: center ? (event) => finishDrag(event, false) : undefined,
             onContextMenu: (event) => event.preventDefault(),
           }, glyph))
         }

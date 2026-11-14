@@ -1,6 +1,6 @@
 {
   "meta": {
     "title": "Terminal keypad",
-    "description": "Floats a translucent keypad over the terminal with Esc, Tab, Ctrl, a symbol key and the four arrow keys. The arrows form a plus around Esc, and Tab, the symbol key and Ctrl fill its free corners. Hold an arrow to repeat it, slide it outward for Home/End/PageUp/PageDown, slide up on the symbol key to switch it to another terminal symbol, and drag the grip to move the pad."
+    "description": "Floats a translucent keypad over the terminal with Esc, Tab, Ctrl, Enter, a symbol key and the four arrow keys. The arrows form a plus around Esc, and Tab, the symbol key, Enter and Ctrl fill its corners. Hold an arrow to repeat it, slide it outward for Home/End/PageUp/PageDown, slide up on the symbol key to switch it to another terminal symbol, and hold the centre Esc key to drag the pad."
   }
 }
