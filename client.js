@@ -91,6 +91,9 @@ window.__ModuleLoader__.load({
     const SIZE = CELL * 3 + GAP * 2
     /** A terminal screen smaller than this is a thumbnail, not a usable anchor. */
     const MIN_TERMINAL = 48
+    /** Delay before a held arrow key starts repeating, then its repeat period, in ms. */
+    const REPEAT_DELAY = 420
+    const REPEAT_INTERVAL = 80
 
     /**
      * Pad styles. Only host theme tokens, so light, dark and token overrides
@@ -101,7 +104,7 @@ window.__ModuleLoader__.load({
       '.dsh-terminal-keypad{position:fixed;z-index:1000;display:grid;',
       'grid-template-columns:repeat(3,', CELL, 'px);grid-template-rows:repeat(3,', CELL, 'px);',
       'grid-template-areas:"tab up pipe" "left escape right" "control down grip";gap:', GAP, 'px;',
-      'user-select:none;-webkit-user-select:none;touch-action:manipulation}',
+      'user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;touch-action:manipulation}',
       '.dsh-terminal-keypad__key{box-sizing:border-box;display:flex;align-items:center;justify-content:center;',
       'width:', CELL, 'px;height:', CELL, 'px;padding:0;border-radius:9px;',
       'border:1px solid color-mix(in srgb,var(--dsw-alias-border-l2) 82%,transparent);',
@@ -417,6 +420,8 @@ window.__ModuleLoader__.load({
       const viewport = useVisualViewport()
       const box = useTerminalBox()
       const [offset, setOffset] = React.useState(readOffset)
+      /** The running auto-repeat of a held arrow key, or null. */
+      const hold = React.useRef(null)
       /** Latest rendered geometry, so a drag starts from what the user sees. */
       const geometry = React.useRef({ left: 0, top: 0, baseLeft: 0, baseTop: 0 })
       /** Latest offset, written again when the drag ends. */
@@ -432,7 +437,29 @@ window.__ModuleLoader__.load({
         offsetRef.current = offset
       }, [offset])
 
-      const activate = React.useCallback((id) => {
+      /** Cancel a held-key repeat and release its listeners. */
+      const stopHold = React.useCallback(() => {
+        const state = hold.current
+        if (state === null) return
+        hold.current = null
+        if (state.delay !== 0) window.clearTimeout(state.delay)
+        if (state.interval !== 0) window.clearInterval(state.interval)
+        window.removeEventListener('pointerup', state.release, true)
+        window.removeEventListener('pointercancel', state.release, true)
+      }, [])
+
+      React.useEffect(() => {
+        const stop = () => stopHold()
+        window.addEventListener('blur', stop)
+        document.addEventListener('visibilitychange', stop)
+        return () => {
+          window.removeEventListener('blur', stop)
+          document.removeEventListener('visibilitychange', stop)
+          stopHold()
+        }
+      }, [stopHold])
+
+      const activate = React.useCallback((id, event) => {
         const key = KEYS[id]
         if (key === undefined) return
         if (key.sticky === true) {
@@ -441,8 +468,25 @@ window.__ModuleLoader__.load({
         }
         const data = armed ? key.ctrl : key.plain
         if (typeof setControl === 'function') setControl(false)
-        if (typeof press === 'function' && data !== undefined) press(data)
-      }, [armed, press, setControl])
+        if (typeof press !== 'function' || data === undefined) return
+        press(data)
+        stopHold()
+        // Holding an arrow key repeats it, like a physical arrow key. Other
+        // keys stay single-shot: a held Esc or Tab is never what was meant.
+        if (key.arrow !== true || event === undefined) return
+        const pointerId = event.pointerId
+        const state = { delay: 0, interval: 0, release: null }
+        state.release = (releaseEvent) => {
+          if (releaseEvent.pointerId !== undefined && releaseEvent.pointerId !== pointerId) return
+          stopHold()
+        }
+        state.delay = window.setTimeout(() => {
+          state.interval = window.setInterval(() => press(data), REPEAT_INTERVAL)
+        }, REPEAT_DELAY)
+        hold.current = state
+        window.addEventListener('pointerup', state.release, true)
+        window.addEventListener('pointercancel', state.release, true)
+      }, [armed, press, setControl, stopHold])
 
       /** Begin dragging from the grip; the keys keep their press-to-send behaviour. */
       const startDrag = (event) => {
@@ -540,7 +584,7 @@ window.__ModuleLoader__.load({
             'aria-pressed': key.sticky === true ? String(armed) : undefined,
             onPointerDown: (event) => {
               event.preventDefault()
-              activate(id)
+              activate(id, event)
             },
             onContextMenu: (event) => event.preventDefault(),
           }, glyph))

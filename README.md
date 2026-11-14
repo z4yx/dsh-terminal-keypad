@@ -13,7 +13,9 @@ A floating, translucent keypad over the DSH Web terminal.
 ```
 
 - The four arrow keys form a plus around **Esc**; they are solid SVG triangles,
-  so they stay crisp at any font, size or zoom level.
+  so they stay crisp at any font, size or zoom level. Holding an arrow repeats
+  it after ~420 ms, every 80 ms, the way a physical arrow key does. Esc, Tab,
+  `|` and Ctrl stay single-shot.
 - **Tab** sits in the upper-left corner, **|** in the upper-right, **Ctrl** in the
   lower-left.
 - The lower-right cell is a **drag grip** (⠿): drag it to move the pad anywhere on
