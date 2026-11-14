@@ -45,9 +45,7 @@ window.__ModuleLoader__.load({
       'aria.end': 'End 键（行尾）',
       'aria.pageup': 'Page Up 键（上翻页）',
       'aria.pagedown': 'Page Down 键（下翻页）',
-      'hint.title': '新手提示',
-      'hint.arrows': '从方向键向外滑动：',
-      'hint.symbol': '从符号键向上滑动可切换符号',
+      'hint.symbolShort': '符号',
       'hint.dismiss': '知道了',
     }
 
@@ -68,9 +66,7 @@ window.__ModuleLoader__.load({
       'aria.end': 'End (end of line)',
       'aria.pageup': 'Page Up',
       'aria.pagedown': 'Page Down',
-      'hint.title': 'First-time tip',
-      'hint.arrows': 'Slide outward from an arrow key:',
-      'hint.symbol': 'Slide up on the symbol key to switch symbols',
+      'hint.symbolShort': 'symbol',
       'hint.dismiss': 'Got it',
     }
 
@@ -139,9 +135,8 @@ window.__ModuleLoader__.load({
     const SYMBOL_KEY = 'dsh-terminal-keypad:symbol.v1'
     /** Local storage key of the dismissed first-run hint. */
     const HINT_KEY = 'dsh-terminal-keypad:hint.v1'
-    /** The hint's box, used to keep it inside the visible area. */
-    const HINT_WIDTH = 232
-    const HINT_HEIGHT = 214
+    /** The hint nudges the pad inward by this much so its coach marks fit on screen. */
+    const HINT_NUDGE = 44
 
     /**
      * Delay before an arrow sends. A touch that slides outward within this
@@ -198,34 +193,15 @@ window.__ModuleLoader__.load({
       'background:color-mix(in srgb,var(--dsw-alias-brand-primary) 28%,transparent)}',
       '.dsh-terminal-keypad__key.dsh-terminal-keypad__key--swipe{border-color:var(--dsw-alias-brand-primary);',
       'background:color-mix(in srgb,var(--dsw-alias-brand-primary) 30%,transparent)}',
-      '.dsh-terminal-keypad__hint{position:absolute;width:', HINT_WIDTH, 'px;box-sizing:border-box;padding:10px 12px;',
-      'border-radius:12px;border:1px solid color-mix(in srgb,var(--dsw-alias-border-l2) 70%,transparent);',
-      'background:color-mix(in srgb,var(--dsw-alias-bg-overlay) 90%,transparent);',
-      '-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);box-shadow:0 8px 24px rgba(0,0,0,.2);',
-      'color:var(--dsw-alias-label-primary);font-size:11px;line-height:1.45;z-index:2}',
-      '.dsh-terminal-keypad__hint-title{font-weight:600;margin-bottom:4px}',
-      '.dsh-terminal-keypad__hint-caption{color:var(--dsw-alias-label-secondary);font-size:10px}',
-      '.dsh-terminal-keypad__hint-map{display:grid;grid-template-columns:auto 1fr auto;grid-template-rows:auto auto auto;',
-      'align-items:center;justify-items:center;gap:2px 6px;margin:4px 0 6px}',
-      '.dsh-terminal-keypad__hint-note{font-size:10px;color:var(--dsw-alias-label-secondary);white-space:nowrap}',
-      '.dsh-terminal-keypad__hint-note--top{grid-area:1/2}',
-      '.dsh-terminal-keypad__hint-note--left{grid-area:2/1;justify-self:end}',
-      '.dsh-terminal-keypad__hint-note--right{grid-area:2/3;justify-self:start}',
-      '.dsh-terminal-keypad__hint-note--bottom{grid-area:3/2}',
-      '.dsh-terminal-keypad__hint-pad{grid-area:2/2;display:grid;grid-template-columns:repeat(3,20px);grid-auto-rows:20px;gap:2px}',
-      '.dsh-terminal-keypad__hint-cell{display:flex;align-items:center;justify-content:center;',
-      'border:1px solid color-mix(in srgb,var(--dsw-alias-border-l2) 55%,transparent);border-radius:4px;',
-      'font-size:7.5px;letter-spacing:-.02em;color:var(--dsw-alias-label-primary)}',
-      '.dsh-terminal-keypad__hint-symbol{display:flex;align-items:center;gap:4px;margin-bottom:6px;',
-      'font-size:10px;color:var(--dsw-alias-label-secondary)}',
-      '.dsh-terminal-keypad__hint-chip{display:flex;align-items:center;justify-content:center;width:20px;height:20px;',
-      'border:1px solid color-mix(in srgb,var(--dsw-alias-border-l2) 55%,transparent);border-radius:4px;',
-      'font-size:10px;color:var(--dsw-alias-label-primary)}',
-      '.dsh-terminal-keypad__hint-up{font-size:12px;line-height:1}',
-      '.dsh-terminal-keypad__hint-button{width:100%;height:28px;border:1px solid color-mix(in srgb,var(--dsw-alias-border-l2) 70%,transparent);',
-      'border-radius:8px;background:color-mix(in srgb,var(--dsw-alias-brand-primary) 18%,transparent);',
-      'color:var(--dsw-alias-label-primary);font-family:inherit;font-size:11px;font-weight:600;cursor:pointer;touch-action:manipulation}',
-      '.dsh-terminal-keypad__hint-button:hover{background:color-mix(in srgb,var(--dsw-alias-brand-primary) 30%,transparent)}',
+      '.dsh-terminal-keypad__coach{position:absolute;inset:0;pointer-events:none;z-index:2;color:var(--dsw-alias-brand-primary)}',
+      '.dsh-terminal-keypad__coach-arrow{position:absolute;display:block}',
+      '.dsh-terminal-keypad__coach-label{position:absolute;font-size:10px;font-weight:600;line-height:1;white-space:nowrap;',
+      'color:var(--dsw-alias-label-primary);text-shadow:0 0 3px var(--dsw-alias-bg-base)}',
+      '.dsh-terminal-keypad__coach-close{position:absolute;top:calc(100% + 8px);left:0;height:22px;padding:0 8px;',
+      'border:1px solid color-mix(in srgb,var(--dsw-alias-border-l2) 70%,transparent);border-radius:7px;',
+      'background:color-mix(in srgb,var(--dsw-alias-bg-overlay) 88%,transparent);color:var(--dsw-alias-label-primary);',
+      'font-family:inherit;font-size:10px;font-weight:600;white-space:nowrap;cursor:pointer;pointer-events:auto;touch-action:manipulation}',
+      '.dsh-terminal-keypad__coach-close:hover{background:color-mix(in srgb,var(--dsw-alias-brand-primary) 20%,transparent)}',
     ].join('')
 
     /**
@@ -862,6 +838,8 @@ window.__ModuleLoader__.load({
           startTop: geometry.current.top,
           baseLeft: geometry.current.baseLeft,
           baseTop: geometry.current.baseTop,
+          shiftX: geometry.current.shiftX,
+          shiftY: geometry.current.shiftY,
           moved: false,
         }
         if (typeof event.currentTarget.setPointerCapture === 'function') {
@@ -880,7 +858,11 @@ window.__ModuleLoader__.load({
           state.moved = true
         }
         event.preventDefault()
-        const next = clampPosition(state.startLeft + dx, state.startTop + dy, readViewport())
+        const next = clampPosition(
+          state.startLeft + dx + state.shiftX,
+          state.startTop + dy + state.shiftY,
+          readViewport(),
+        )
         const moved = { x: next.left - state.baseLeft, y: next.top - state.baseTop }
         offsetRef.current = moved
         setOffset(moved)
@@ -910,7 +892,21 @@ window.__ModuleLoader__.load({
       const position = clampPosition(base.left + offset.x, base.top + offset.y, viewport)
       /** The symbol key shows the hovered picker symbol while the picker is open. */
       const shownSymbol = preview ?? symbol
-      geometry.current = { left: position.left, top: position.top, baseLeft: base.left, baseTop: base.top }
+      /** Draw the coach marks while the hint is up; hide them under the picker. */
+      const coaching = hint && !menuOpen
+      // Keep the one-time nudge while the picker is open too: moving the pad
+      // under the finger mid-gesture would yank the key away.
+      const placed = hint
+        ? clampPosition(position.left - HINT_NUDGE, position.top - HINT_NUDGE, viewport)
+        : position
+      geometry.current = {
+        left: placed.left,
+        top: placed.top,
+        baseLeft: base.left,
+        baseTop: base.top,
+        shiftX: position.left - placed.left,
+        shiftY: position.top - placed.top,
+      }
 
       const cells = []
       for (const row of LAYOUT) {
@@ -979,15 +975,6 @@ window.__ModuleLoader__.load({
         }
       }
 
-      const hintStyle = hint && !menuOpen
-        ? {
-          left: Math.round(clamp(position.left + SIZE - HINT_WIDTH, viewport.left + 8, viewport.left + viewport.width - HINT_WIDTH - 8) - position.left),
-          top: Math.round((position.top - HINT_HEIGHT - 8 >= viewport.top + 8
-            ? position.top - HINT_HEIGHT - 8
-            : position.top + SIZE + 8) - position.top),
-        }
-        : null
-
       const menuStyle = menuOpen
         ? {
           left: Math.round(clamp(position.left, viewport.left + 8, viewport.left + viewport.width - MENU_WIDTH - 8) - position.left),
@@ -1003,7 +990,7 @@ window.__ModuleLoader__.load({
           role: 'group',
           'aria-label': t('label'),
           'data-terminal-keypad': '',
-          style: position,
+          style: placed,
         }, cells, menuOpen ? h('div', {
           key: 'menu',
           className: 'dsh-terminal-keypad__menu',
@@ -1020,37 +1007,72 @@ window.__ModuleLoader__.load({
             className: classes.join(' '),
             'data-symbol': item,
           }, item)
-        })) : null, hint && !menuOpen ? h('div', {
-          key: 'hint',
-          className: 'dsh-terminal-keypad__hint',
-          role: 'dialog',
-          'aria-label': t('hint.title'),
-          'data-terminal-keypad-hint': '',
-          style: hintStyle,
+        })) : null, coaching ? h('div', {
+          key: 'coach',
+          className: 'dsh-terminal-keypad__coach',
+          'aria-hidden': 'true',
         },
-        h('div', { className: 'dsh-terminal-keypad__hint-title' }, t('hint.title')),
-        h('div', { className: 'dsh-terminal-keypad__hint-caption' }, t('hint.arrows')),
-        h('div', { className: 'dsh-terminal-keypad__hint-map', 'aria-hidden': 'true' },
-          h('span', { className: 'dsh-terminal-keypad__hint-note dsh-terminal-keypad__hint-note--top' }, 'PgUp'),
-          h('span', { className: 'dsh-terminal-keypad__hint-note dsh-terminal-keypad__hint-note--left' }, 'Home'),
-          h('div', { className: 'dsh-terminal-keypad__hint-pad' },
-            ['Tab', '\u25B2', shownSymbol, '\u25C0', 'Esc', '\u25B6', 'Ctrl', '\u25BC', '\u21B5'].map((text, index) => h('span', {
-              key: index,
-              className: 'dsh-terminal-keypad__hint-cell',
-            }, text))),
-          h('span', { className: 'dsh-terminal-keypad__hint-note dsh-terminal-keypad__hint-note--right' }, 'End'),
-          h('span', { className: 'dsh-terminal-keypad__hint-note dsh-terminal-keypad__hint-note--bottom' }, 'PgDn'),
-        ),
-        h('div', { className: 'dsh-terminal-keypad__hint-symbol' },
-          h('span', { className: 'dsh-terminal-keypad__hint-chip' }, shownSymbol),
-          h('span', { className: 'dsh-terminal-keypad__hint-up', 'aria-hidden': 'true' }, '\u2191'),
-          h('span', null, t('hint.symbol'))),
-        h('button', {
+        h('svg', {
+          className: 'dsh-terminal-keypad__coach-arrow',
+          viewBox: '0 0 10 10',
+          width: 10,
+          height: 10,
+          style: { top: -22, left: 54 },
+        }, h('path', { d: 'M5 1.5 9 8.5H1Z', fill: 'currentColor' })),
+        h('span', {
+          className: 'dsh-terminal-keypad__coach-label',
+          style: { top: -37, left: 59, transform: 'translateX(-50%)' },
+        }, 'PgUp'),
+        h('svg', {
+          className: 'dsh-terminal-keypad__coach-arrow',
+          viewBox: '0 0 10 10',
+          width: 10,
+          height: 10,
+          style: { top: -22, left: 95 },
+        }, h('path', { d: 'M5 1.5 9 8.5H1Z', fill: 'currentColor' })),
+        h('span', {
+          className: 'dsh-terminal-keypad__coach-label',
+          style: { top: -37, left: 100, transform: 'translateX(-50%)' },
+        }, t('hint.symbolShort')),
+        h('svg', {
+          className: 'dsh-terminal-keypad__coach-arrow',
+          viewBox: '0 0 10 10',
+          width: 10,
+          height: 10,
+          style: { top: 54, left: -22, transform: 'rotate(-90deg)' },
+        }, h('path', { d: 'M5 1.5 9 8.5H1Z', fill: 'currentColor' })),
+        h('span', {
+          className: 'dsh-terminal-keypad__coach-label',
+          style: { top: 59, left: -28, transform: 'translate(-100%, -50%)' },
+        }, 'Home'),
+        h('svg', {
+          className: 'dsh-terminal-keypad__coach-arrow',
+          viewBox: '0 0 10 10',
+          width: 10,
+          height: 10,
+          style: { top: 54, right: -22, transform: 'rotate(90deg)' },
+        }, h('path', { d: 'M5 1.5 9 8.5H1Z', fill: 'currentColor' })),
+        h('span', {
+          className: 'dsh-terminal-keypad__coach-label',
+          style: { top: 59, left: 'calc(100% + 28px)', transform: 'translateY(-50%)' },
+        }, 'End'),
+        h('svg', {
+          className: 'dsh-terminal-keypad__coach-arrow',
+          viewBox: '0 0 10 10',
+          width: 10,
+          height: 10,
+          style: { bottom: -22, left: 54, transform: 'rotate(180deg)' },
+        }, h('path', { d: 'M5 1.5 9 8.5H1Z', fill: 'currentColor' })),
+        h('span', {
+          className: 'dsh-terminal-keypad__coach-label',
+          style: { top: 'calc(100% + 26px)', left: 59, transform: 'translateX(-50%)' },
+        }, 'PgDn')) : null, coaching ? h('button', {
+          key: 'dismiss',
           type: 'button',
-          className: 'dsh-terminal-keypad__hint-button',
+          className: 'dsh-terminal-keypad__coach-close',
           onClick: dismissHint,
           onPointerDown: (event) => event.stopPropagation(),
-        }, t('hint.dismiss'))) : null),
+        }, t('hint.dismiss')) : null),
       ), document.body)
     }
 

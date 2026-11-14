@@ -1,6 +1,6 @@
 {
   "name": "dsh-terminal-keypad",
-  "version": "1.8.0",
+  "version": "1.8.1",
   "private": true,
   "description": "Floats a translucent keypad over the Web terminal with Esc, Tab, Ctrl, | and the four arrow keys.",
   "type": "module",

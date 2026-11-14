@@ -76,9 +76,10 @@ terminal is never touched.
 
 ### First-run hint
 
-The first time the pad appears it shows a small diagram of the two slide
-gestures: arrows outward for the pager keys, and the symbol key upward for the
-symbol picker. Press **Got it** and it stays away for good.
+The first time the pad appears, small arrows and labels are drawn around it:
+**Page Up / Home / End / Page Down** next to the four arrow keys, and **symbol**
+above the symbol key. Press **Got it** (below the pad) and it stays away for
+good.
 
 ### Move it where you want
 
