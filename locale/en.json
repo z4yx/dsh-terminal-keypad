@@ -1,6 +1,6 @@
 {
   "meta": {
     "title": "Terminal keypad",
-    "description": "Floats a translucent keypad over the terminal with Esc, Tab, Ctrl, | and the four arrow keys. The arrows form a plus around Esc, and Tab, | and Ctrl fill its free corners."
+    "description": "Floats a translucent keypad over the terminal with Esc, Tab, Ctrl, | and the four arrow keys. The arrows form a plus around Esc, and Tab, | and Ctrl fill its free corners. Hold an arrow to repeat it, or slide it outward for Home/End/PageUp/PageDown; drag the grip to move the pad."
   }
 }

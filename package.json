@@ -1,6 +1,6 @@
 {
   "name": "dsh-terminal-keypad",
-  "version": "1.4.1",
+  "version": "1.4.2",
   "private": true,
   "description": "Floats a translucent keypad over the Web terminal with Esc, Tab, Ctrl, | and the four arrow keys.",
   "type": "module",
@@ -18,7 +18,8 @@
     "cordis.patch.yml",
     "locale/*.json",
     "icon.svg",
-    "README.md"
+    "README.md",
+    "README.zh.md"
   ],
   "icon": "./icon.svg",
   "dsh": {
