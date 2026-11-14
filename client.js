@@ -176,6 +176,8 @@ window.__ModuleLoader__.load({
       'background:transparent;color:var(--dsw-alias-label-primary);',
       'font:600 13px/1 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;cursor:pointer;touch-action:none}',
       '.dsh-terminal-keypad__symbol:hover{background:color-mix(in srgb,var(--dsw-alias-bg-overlay) 45%,transparent)}',
+      '.dsh-terminal-keypad__symbol--preview{border-color:var(--dsw-alias-label-primary);',
+      'background:color-mix(in srgb,var(--dsw-alias-brand-primary) 45%,transparent)}',
       '.dsh-terminal-keypad__symbol--current{border-color:var(--dsw-alias-brand-primary);',
       'background:color-mix(in srgb,var(--dsw-alias-brand-primary) 28%,transparent)}',
       '.dsh-terminal-keypad__key.dsh-terminal-keypad__key--swipe{border-color:var(--dsw-alias-brand-primary);',
@@ -437,6 +439,20 @@ window.__ModuleLoader__.load({
     }
 
     /**
+     * The picker symbol under one viewport point.
+     * @param x - viewport x of the pointer.
+     * @param y - viewport y of the pointer.
+     * @returns the symbol under that point, or null.
+     */
+    function symbolAt(x, y) {
+      if (typeof document.elementFromPoint !== 'function') return null
+      const element = document.elementFromPoint(x, y)
+      if (element === null || typeof element.closest !== 'function') return null
+      const option = element.closest('[data-symbol]')
+      return option === null ? null : option.getAttribute('data-symbol')
+    }
+
+    /**
      * Read the saved symbol key.
      * @returns the stored symbol when it is one of {@link SYMBOLS}, else `|`.
      */
@@ -512,6 +528,8 @@ window.__ModuleLoader__.load({
       /** The symbol the symbol key holds, and whether its picker is open. */
       const [symbol, setSymbol] = React.useState(readSymbol)
       const [menuOpen, setMenuOpen] = React.useState(false)
+      /** The picker symbol under the finger while the picker is open. */
+      const [preview, setPreview] = React.useState(null)
       /** The running auto-repeat of a held arrow key, or null. */
       const hold = React.useRef(null)
       /** Latest rendered geometry, so a drag starts from what the user sees. */
@@ -539,6 +557,8 @@ window.__ModuleLoader__.load({
         window.removeEventListener('pointerup', state.release, true)
         window.removeEventListener('pointercancel', state.release, true)
         setSwiped(null)
+        setPreview(null)
+        setMenuOpen(false)
       }, [])
 
       React.useEffect(() => {
@@ -560,10 +580,12 @@ window.__ModuleLoader__.load({
           return
         }
         if (key.symbol === true) {
-          // The symbol key: slide up to open the symbol picker, a plain press
-          // sends the symbol it currently holds (Ctrl turns it into a control
-          // byte when the symbol has one, e.g. | -> 0x1c).
+          // The symbol key sends on release, never on press: sliding up first
+          // must be able to open the picker instead. The picker stays under the
+          // finger: the key previews the symbol being passed over, releasing on
+          // one types and keeps it, and releasing outside changes nothing.
           const chosen = armed ? (controlByte(symbol) ?? symbol) : symbol
+          const isArmed = armed
           if (typeof setControl === 'function') setControl(false)
           if (typeof press !== 'function') return
           if (event === undefined) {
@@ -574,42 +596,44 @@ window.__ModuleLoader__.load({
           const state = {
             pointerId: event.pointerId,
             data: chosen,
+            armed: isArmed,
             startY: event.clientY,
-            sent: false,
             opened: false,
-            timer: 0,
+            hovered: null,
             move: null,
             release: null,
-          }
-          const cancel = () => {
-            if (state.timer === 0) return
-            window.clearTimeout(state.timer)
-            state.timer = 0
+            timer: 0,
           }
           state.move = (moveEvent) => {
-            if (moveEvent.pointerId !== state.pointerId || state.opened) return
-            if (moveEvent.clientY - state.startY > -SWIPE_DISTANCE) return
-            state.opened = true
-            cancel()
-            setMenuOpen(true)
+            if (moveEvent.pointerId !== state.pointerId) return
+            if (!state.opened) {
+              if (moveEvent.clientY - state.startY > -SWIPE_DISTANCE) return
+              state.opened = true
+              setMenuOpen(true)
+            }
+            const hovered = symbolAt(moveEvent.clientX, moveEvent.clientY)
+            if (hovered === state.hovered) return
+            state.hovered = hovered
+            setPreview(hovered)
           }
           state.release = (releaseEvent) => {
             if (releaseEvent.pointerId !== undefined && releaseEvent.pointerId !== state.pointerId) return
-            const send = !state.sent && !state.opened
+            if (state.opened) {
+              const picked = symbolAt(releaseEvent.clientX, releaseEvent.clientY)
+              stopHold()
+              if (picked === null) return
+              setSymbol(picked)
+              saveSymbol(picked)
+              press(state.armed ? (controlByte(picked) ?? picked) : picked)
+              return
+            }
             stopHold()
-            if (send) press(state.data)
-          }
-          const fire = () => {
-            state.timer = 0
-            if (hold.current !== state || state.opened) return
-            state.sent = true
             press(state.data)
           }
           hold.current = state
           window.addEventListener('pointermove', state.move, true)
           window.addEventListener('pointerup', state.release, true)
           window.addEventListener('pointercancel', state.release, true)
-          state.timer = window.setTimeout(fire, TAP_GRACE)
           return
         }
 
@@ -685,24 +709,6 @@ window.__ModuleLoader__.load({
         state.timer = window.setTimeout(startRepeat, TAP_GRACE)
       }, [armed, press, setControl, stopHold, symbol])
 
-      /** Choose a symbol: the key keeps it, the picker closes. */
-      const chooseSymbol = (next) => {
-        setSymbol(next)
-        saveSymbol(next)
-        setMenuOpen(false)
-      }
-
-      React.useEffect(() => {
-        if (!menuOpen) return undefined
-        const dismiss = (event) => {
-          const element = event.target
-          if (element instanceof Element && element.closest('[data-terminal-keypad-menu]') !== null) return
-          setMenuOpen(false)
-        }
-        document.addEventListener('pointerdown', dismiss, true)
-        return () => document.removeEventListener('pointerdown', dismiss, true)
-      }, [menuOpen])
-
       /** Begin dragging from the grip; the keys keep their press-to-send behaviour. */
       const startDrag = (event) => {
         if (event.button !== 0) return
@@ -752,6 +758,8 @@ window.__ModuleLoader__.load({
 
       const base = basePosition(box, viewport)
       const position = clampPosition(base.left + offset.x, base.top + offset.y, viewport)
+      /** The symbol key shows the hovered picker symbol while the picker is open. */
+      const shownSymbol = preview ?? symbol
       geometry.current = { left: position.left, top: position.top, baseLeft: base.left, baseTop: base.top }
 
       const cells = []
@@ -783,11 +791,11 @@ window.__ModuleLoader__.load({
           const key = KEYS[id]
           const swipe = SWIPE_KEYS[id]
           const showing = swiped === id && swipe !== undefined
-          const label = key.symbol === true ? t(key.label, { symbol }) : t(key.label)
+          const label = key.symbol === true ? t(key.label, { symbol: shownSymbol }) : t(key.label)
           const glyph = showing
             ? h('span', { className: 'dsh-terminal-keypad__swipe' }, swipe.text)
             : key.symbol === true
-              ? symbol
+              ? shownSymbol
               : key.arrow === true
                 ? h('svg', {
                   className: 'dsh-terminal-keypad__arrow',
@@ -838,21 +846,16 @@ window.__ModuleLoader__.load({
           role: 'group',
           'aria-label': t('aria.symbolMenu'),
           style: menuStyle,
-        }, SYMBOLS.map((item) => h('button', {
-          key: item,
-          type: 'button',
-          className: item === symbol
-            ? 'dsh-terminal-keypad__symbol dsh-terminal-keypad__symbol--current'
-            : 'dsh-terminal-keypad__symbol',
-          title: item,
-          'aria-label': item,
-          'aria-pressed': item === symbol ? 'true' : undefined,
-          onPointerDown: (event) => {
-            event.preventDefault()
-            chooseSymbol(item)
-          },
-          onContextMenu: (event) => event.preventDefault(),
-        }, item))) : null),
+        }, SYMBOLS.map((item) => {
+          const classes = ['dsh-terminal-keypad__symbol']
+          if (item === symbol) classes.push('dsh-terminal-keypad__symbol--current')
+          if (item === preview) classes.push('dsh-terminal-keypad__symbol--preview')
+          return h('div', {
+            key: item,
+            className: classes.join(' '),
+            'data-symbol': item,
+          }, item)
+        })) : null),
       ), document.body)
     }
 

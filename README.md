@@ -32,7 +32,7 @@ lower-right cell is the drag grip.
 | **▲ ▼ ◀ ▶** | move the cursor | keep moving | **Page Up / Page Down / Home / End** |
 | **Esc** | send Escape | — | — |
 | **Tab** | send Tab | — | — |
-| **`\|`** | type the current symbol | — | slide up to pick another symbol |
+| **`\|`** | type the current symbol | — | slide up, then release on a symbol |
 | **Ctrl** | arm Ctrl | — | — |
 | **⠿** | — | drag the pad | — |
 
@@ -57,8 +57,10 @@ not sent first, so a slide never moves the cursor or rewrites your shell history
 
 The key in the upper-right is not fixed to `|`. Slide up on it and a small picker
 of common terminal symbols opens — pipes, redirects, quotes, brackets, operators
-and more. Tap one and the key takes it, ready for the next press, and the choice
-is remembered for next time. A plain press still types the symbol the key holds.
+and more. Keep your finger down and slide across it: the key previews the symbol
+under your finger. Release on a symbol to type it and keep it for next time;
+release anywhere else and the picker closes without typing or changing anything.
+A plain press still types the symbol the key holds.
 
 ### Ctrl is sticky
 
