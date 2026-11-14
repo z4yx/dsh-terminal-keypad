@@ -84,9 +84,9 @@ window.__ModuleLoader__.load({
     ]
 
     /** Cell size, gap and inset from the terminal's lower-right corner, in CSS pixels. */
-    const CELL = 40
-    const GAP = 6
-    const INSET = 14
+    const CELL = 36
+    const GAP = 5
+    const INSET = 12
     /** Rendered square of the pad, used to keep it inside the visible box. */
     const SIZE = CELL * 3 + GAP * 2
     /** A terminal screen smaller than this is a thumbnail, not a usable anchor. */
@@ -103,23 +103,23 @@ window.__ModuleLoader__.load({
       'grid-template-areas:"tab up pipe" "left escape right" "control down grip";gap:', GAP, 'px;',
       'user-select:none;-webkit-user-select:none;touch-action:manipulation}',
       '.dsh-terminal-keypad__key{box-sizing:border-box;display:flex;align-items:center;justify-content:center;',
-      'width:', CELL, 'px;height:', CELL, 'px;padding:0;border-radius:10px;',
-      'border:1px solid color-mix(in srgb,var(--dsw-alias-border-l2) 40%,transparent);',
+      'width:', CELL, 'px;height:', CELL, 'px;padding:0;border-radius:9px;',
+      'border:1px solid color-mix(in srgb,var(--dsw-alias-border-l2) 82%,transparent);',
       'background:color-mix(in srgb,var(--dsw-alias-bg-overlay) 24%,transparent);',
       'color:var(--dsw-alias-label-primary);',
-      'font:600 13px/1 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;',
+      'font:600 12px/1 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;',
       'text-shadow:0 0 2px var(--dsw-alias-bg-base);',
-      'box-shadow:0 1px 3px rgba(0,0,0,.08);cursor:pointer;touch-action:manipulation;',
+      'box-shadow:0 1px 4px rgba(0,0,0,.12);cursor:pointer;touch-action:manipulation;',
       'transition:background-color 120ms ease,transform 80ms ease}',
       '.dsh-terminal-keypad__key:hover{background:color-mix(in srgb,var(--dsw-alias-bg-overlay) 50%,transparent)}',
       '.dsh-terminal-keypad__key:active{transform:scale(.94)}',
       '.dsh-terminal-keypad__key[aria-pressed="true"]{border-color:var(--dsw-alias-brand-primary);',
       'background:color-mix(in srgb,var(--dsw-alias-brand-primary) 32%,transparent)}',
       '.dsh-terminal-keypad__key:focus-visible{outline:2px solid var(--dsw-alias-brand-primary);outline-offset:2px}',
-      '.dsh-terminal-keypad__arrow{display:block;width:18px;height:18px}',
+      '.dsh-terminal-keypad__arrow{display:block;width:16px;height:16px}',
       '.dsh-terminal-keypad__grip{display:flex;align-items:center;justify-content:center;box-sizing:border-box;',
-      'width:', CELL, 'px;height:', CELL, 'px;padding:0;border:0;border-radius:10px;background:transparent;',
-      'color:var(--dsw-alias-label-secondary);opacity:.45;cursor:grab;touch-action:none;',
+      'width:', CELL, 'px;height:', CELL, 'px;padding:0;border:0;border-radius:9px;background:transparent;',
+      'color:var(--dsw-alias-label-secondary);opacity:.55;cursor:grab;touch-action:none;',
       'transition:opacity 120ms ease,background-color 120ms ease}',
       '.dsh-terminal-keypad__grip:hover{opacity:.9;background:color-mix(in srgb,var(--dsw-alias-bg-overlay) 26%,transparent)}',
       '.dsh-terminal-keypad__grip:active{cursor:grabbing;opacity:1}',
