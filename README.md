@@ -4,22 +4,34 @@ A floating, translucent keypad over the DSH Web terminal.
 
 ```
       ┌─────┬─────┬─────┐
-      │ Tab │  ↑  │  |  │
+      │ Tab │  ▲  │  |  │
       ├─────┼─────┼─────┤
-      │  ←  │ Esc │  →  │
-      ├─────┼─────┼─────┘
-      │Ctrl │  ↓  │
-      └─────┴─────┘
+      │  ◀  │ Esc │  ▶  │
+      ├─────┼─────┼─────┤
+      │Ctrl │  ▼  │ ⠿   │
+      └─────┴─────┴─────┘
 ```
 
-- The four arrow keys form a plus around **Esc**.
-- **Tab** sits in the upper-left corner, **|** in the upper-right, **Ctrl** in the lower-left.
-- **Ctrl** is sticky: tap it (it highlights), then tap an arrow to send Ctrl+Arrow, tap `|` to send `0x1c` (Ctrl+\), or type a character into the focused terminal and it arrives as the matching control byte (c → `0x03`, m → `0x0d`, z → `0x1a`, …). Tap it again to disarm; it disarms after one use.
+- The four arrow keys form a plus around **Esc**; they are solid SVG triangles,
+  so they stay crisp at any font, size or zoom level.
+- **Tab** sits in the upper-left corner, **|** in the upper-right, **Ctrl** in the
+  lower-left.
+- The lower-right cell is a **drag grip** (⠿): drag it to move the pad anywhere on
+  screen. The position is remembered in `localStorage` for the next visit and is
+  always clamped back inside the visible area.
+- **Ctrl** is sticky: tap it (it highlights), then tap an arrow to send Ctrl+Arrow,
+  tap `|` to send `0x1c` (Ctrl+\), or type a character into the focused terminal
+  and it arrives as the matching control byte (c → `0x03`, m → `0x0d`,
+  z → `0x1a`, …). Tap it again to disarm; it disarms after one use.
+
+The surfaces are deliberately almost transparent and unblurred, so terminal text
+behind the pad stays readable: each key is a 24% theme-token tint, with the
+glyph itself fully opaque and haloed against the background.
 
 The pad appears only while a terminal screen is on screen, floats against the
-terminal's lower-right corner, stays inside the visual viewport when the phone's
-soft keyboard opens, and writes through the public Client terminal service
-(`ctx.webTerminals.view(...).write(...)`), so it never allocates a second
+terminal's lower-right corner by default, stays inside the visual viewport when
+the phone's soft keyboard opens, and writes through the public Client terminal
+service (`ctx.webTerminals.view(...).write(...)`), so it never allocates a second
 terminal attachment.
 
 ## Install

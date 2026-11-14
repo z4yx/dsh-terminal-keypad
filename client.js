@@ -39,6 +39,7 @@ window.__ModuleLoader__.load({
       'aria.down': '下方向键',
       'aria.left': '左方向键',
       'aria.right': '右方向键',
+      'aria.drag': '拖动移动按键面板',
     }
 
     /** English copy. */
@@ -52,25 +53,34 @@ window.__ModuleLoader__.load({
       'aria.down': 'Arrow down',
       'aria.left': 'Arrow left',
       'aria.right': 'Arrow right',
+      'aria.drag': 'Drag to move the keypad',
+    }
+
+    /** Solid triangles, so the arrow keys stay crisp at any font or zoom. */
+    const ARROW_PATHS = {
+      up: 'M8 3.2 13.2 12.4H2.8Z',
+      down: 'M8 12.8 2.8 3.6h10.4Z',
+      left: 'M3.2 8 12.4 2.8v10.4Z',
+      right: 'M12.8 8 3.6 13.2V2.8Z',
     }
 
     /** One keypad cell: what the user reads, its accessible name, and its bytes. */
     const KEYS = {
       tab: { text: 'Tab', label: 'aria.tab', plain: '\t', ctrl: '\t' },
-      up: { text: '\u2191', label: 'aria.up', plain: '\u001b[A', ctrl: '\u001b[1;5A' },
+      up: { arrow: true, label: 'aria.up', plain: '\u001b[A', ctrl: '\u001b[1;5A' },
       pipe: { text: '|', label: 'aria.pipe', plain: '|', ctrl: '\u001c' },
-      left: { text: '\u2190', label: 'aria.left', plain: '\u001b[D', ctrl: '\u001b[1;5D' },
+      left: { arrow: true, label: 'aria.left', plain: '\u001b[D', ctrl: '\u001b[1;5D' },
       escape: { text: 'Esc', label: 'aria.escape', plain: '\u001b', ctrl: '\u001b' },
-      right: { text: '\u2192', label: 'aria.right', plain: '\u001b[C', ctrl: '\u001b[1;5C' },
+      right: { arrow: true, label: 'aria.right', plain: '\u001b[C', ctrl: '\u001b[1;5C' },
       control: { text: 'Ctrl', label: 'aria.control', sticky: true },
-      down: { text: '\u2193', label: 'aria.down', plain: '\u001b[B', ctrl: '\u001b[1;5B' },
+      down: { arrow: true, label: 'aria.down', plain: '\u001b[B', ctrl: '\u001b[1;5B' },
     }
 
-    /** The plus: arrows around Esc; Tab, | and Ctrl in the free corners. */
+    /** The plus: arrows around Esc; Tab, | and Ctrl in the free corners; a grip last. */
     const LAYOUT = [
       ['tab', 'up', 'pipe'],
       ['left', 'escape', 'right'],
-      ['control', 'down', null],
+      ['control', 'down', 'grip'],
     ]
 
     /** Cell size, gap and inset from the terminal's lower-right corner, in CSS pixels. */
@@ -82,26 +92,37 @@ window.__ModuleLoader__.load({
     /** A terminal screen smaller than this is a thumbnail, not a usable anchor. */
     const MIN_TERMINAL = 48
 
-    /** Pad styles; only host theme tokens, so light, dark and token overrides apply. */
+    /**
+     * Pad styles. Only host theme tokens, so light, dark and token overrides
+     * apply. Surfaces are kept very light and unblurred: the terminal text
+     * behind the pad must stay readable.
+     */
     const STYLE = [
       '.dsh-terminal-keypad{position:fixed;z-index:1000;display:grid;',
       'grid-template-columns:repeat(3,', CELL, 'px);grid-template-rows:repeat(3,', CELL, 'px);',
-      'grid-template-areas:"tab up pipe" "left escape right" "control down .";gap:', GAP, 'px;',
+      'grid-template-areas:"tab up pipe" "left escape right" "control down grip";gap:', GAP, 'px;',
       'user-select:none;-webkit-user-select:none;touch-action:manipulation}',
       '.dsh-terminal-keypad__key{box-sizing:border-box;display:flex;align-items:center;justify-content:center;',
-      'width:', CELL, 'px;height:', CELL, 'px;padding:0;border:1px solid var(--dsw-alias-border-l2);',
-      'border-radius:10px;background:var(--dsw-alias-bg-overlay);',
-      'background:color-mix(in srgb,var(--dsw-alias-bg-overlay) 58%,transparent);',
-      'color:var(--dsw-alias-label-primary);font:600 13px/1 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;',
-      '-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);',
-      'box-shadow:0 2px 8px rgba(0,0,0,.16);cursor:pointer;touch-action:manipulation;',
+      'width:', CELL, 'px;height:', CELL, 'px;padding:0;border-radius:10px;',
+      'border:1px solid color-mix(in srgb,var(--dsw-alias-border-l2) 40%,transparent);',
+      'background:color-mix(in srgb,var(--dsw-alias-bg-overlay) 24%,transparent);',
+      'color:var(--dsw-alias-label-primary);',
+      'font:600 13px/1 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;',
+      'text-shadow:0 0 2px var(--dsw-alias-bg-base);',
+      'box-shadow:0 1px 3px rgba(0,0,0,.08);cursor:pointer;touch-action:manipulation;',
       'transition:background-color 120ms ease,transform 80ms ease}',
-      '.dsh-terminal-keypad__key:hover{background:var(--dsw-alias-bg-overlay);',
-      'background:color-mix(in srgb,var(--dsw-alias-bg-overlay) 84%,transparent)}',
+      '.dsh-terminal-keypad__key:hover{background:color-mix(in srgb,var(--dsw-alias-bg-overlay) 50%,transparent)}',
       '.dsh-terminal-keypad__key:active{transform:scale(.94)}',
       '.dsh-terminal-keypad__key[aria-pressed="true"]{border-color:var(--dsw-alias-brand-primary);',
-      'background:color-mix(in srgb,var(--dsw-alias-brand-primary) 30%,transparent)}',
+      'background:color-mix(in srgb,var(--dsw-alias-brand-primary) 32%,transparent)}',
       '.dsh-terminal-keypad__key:focus-visible{outline:2px solid var(--dsw-alias-brand-primary);outline-offset:2px}',
+      '.dsh-terminal-keypad__arrow{display:block;width:18px;height:18px}',
+      '.dsh-terminal-keypad__grip{display:flex;align-items:center;justify-content:center;box-sizing:border-box;',
+      'width:', CELL, 'px;height:', CELL, 'px;padding:0;border:0;border-radius:10px;background:transparent;',
+      'color:var(--dsw-alias-label-secondary);opacity:.45;cursor:grab;touch-action:none;',
+      'transition:opacity 120ms ease,background-color 120ms ease}',
+      '.dsh-terminal-keypad__grip:hover{opacity:.9;background:color-mix(in srgb,var(--dsw-alias-bg-overlay) 26%,transparent)}',
+      '.dsh-terminal-keypad__grip:active{cursor:grabbing;opacity:1}',
     ].join('')
 
     /**
@@ -316,21 +337,69 @@ window.__ModuleLoader__.load({
       return box
     }
 
+    /** Where the user dragged the pad to, relative to {@link basePosition}. */
+    const OFFSET_KEY = 'dsh-terminal-keypad:offset.v1'
+
     /**
-     * Place the pad against the terminal's lower-right corner, kept inside the
-     * visible box so a soft keyboard never hides it.
-     * @param box - the visible terminal rectangle, or null to use the screen corner.
-     * @param viewport - the visual viewport box.
-     * @returns inline `{ left, top }` for the fixed pad.
+     * Read the saved drag offset.
+     * @returns `{ x, y }`, zero when nothing usable is stored.
      */
-    function place(box, viewport) {
+    function readOffset() {
+      try {
+        const raw = window.localStorage.getItem(OFFSET_KEY)
+        if (raw !== null) {
+          const value = JSON.parse(raw)
+          if (value !== null && typeof value === 'object'
+            && Number.isFinite(value.x) && Number.isFinite(value.y)) {
+            return { x: value.x, y: value.y }
+          }
+        }
+      } catch (error) {
+        // Storage can be unavailable or hold foreign data; the default wins.
+      }
+      return { x: 0, y: 0 }
+    }
+
+    /**
+     * Remember the drag offset for the next visit.
+     * @param offset - the `{ x, y }` offset to store.
+     */
+    function saveOffset(offset) {
+      try {
+        window.localStorage.setItem(OFFSET_KEY, JSON.stringify(offset))
+      } catch (error) {
+        // A full or blocked storage is not worth failing the drag over.
+      }
+    }
+
+    /**
+     * The pad's default spot: inside the terminal's lower-right corner.
+     * @param box - the visible terminal rectangle, or null for the screen corner.
+     * @param viewport - the visual viewport box.
+     * @returns the unclamped `{ left, top }`.
+     */
+    function basePosition(box, viewport) {
       const right = viewport.left + viewport.width
       const bottom = viewport.top + viewport.height
       const anchorRight = box === null ? right : Math.min(box.right, right)
       const anchorBottom = box === null ? bottom : Math.min(box.bottom, bottom)
+      return { left: anchorRight - SIZE - INSET, top: anchorBottom - SIZE - INSET }
+    }
+
+    /**
+     * Keep the whole pad inside the visible box, so a soft keyboard or a narrow
+     * window never hides it.
+     * @param left - wanted viewport x.
+     * @param top - wanted viewport y.
+     * @param viewport - the visual viewport box.
+     * @returns the clamped `{ left, top }`.
+     */
+    function clampPosition(left, top, viewport) {
+      const right = viewport.left + viewport.width
+      const bottom = viewport.top + viewport.height
       return {
-        left: Math.round(clamp(anchorRight - SIZE - INSET, viewport.left + 8, right - SIZE - 8)),
-        top: Math.round(clamp(anchorBottom - SIZE - INSET, viewport.top + 8, bottom - SIZE - 8)),
+        left: Math.round(clamp(left, viewport.left + 8, right - SIZE - 8)),
+        top: Math.round(clamp(top, viewport.top + 8, bottom - SIZE - 8)),
       }
     }
 
@@ -347,10 +416,21 @@ window.__ModuleLoader__.load({
       const setControl = props.setControl
       const viewport = useVisualViewport()
       const box = useTerminalBox()
+      const [offset, setOffset] = React.useState(readOffset)
+      /** Latest rendered geometry, so a drag starts from what the user sees. */
+      const geometry = React.useRef({ left: 0, top: 0, baseLeft: 0, baseTop: 0 })
+      /** Latest offset, written again when the drag ends. */
+      const offsetRef = React.useRef(offset)
+      /** The active drag, or null. */
+      const drag = React.useRef(null)
 
       React.useEffect(() => {
         if (typeof setControl === 'function') setControl(false)
       }, [target, setControl])
+
+      React.useEffect(() => {
+        offsetRef.current = offset
+      }, [offset])
 
       const activate = React.useCallback((id) => {
         const key = KEYS[id]
@@ -364,14 +444,93 @@ window.__ModuleLoader__.load({
         if (typeof press === 'function' && data !== undefined) press(data)
       }, [armed, press, setControl])
 
+      /** Begin dragging from the grip; the keys keep their press-to-send behaviour. */
+      const startDrag = (event) => {
+        if (event.button !== 0) return
+        event.preventDefault()
+        event.stopPropagation()
+        drag.current = {
+          pointerId: event.pointerId,
+          startX: event.clientX,
+          startY: event.clientY,
+          startLeft: geometry.current.left,
+          startTop: geometry.current.top,
+          baseLeft: geometry.current.baseLeft,
+          baseTop: geometry.current.baseTop,
+        }
+        if (typeof event.currentTarget.setPointerCapture === 'function') {
+          event.currentTarget.setPointerCapture(event.pointerId)
+        }
+      }
+
+      /** Follow the pointer, clamped so the pad cannot leave the screen. */
+      const moveDrag = (event) => {
+        const state = drag.current
+        if (state === null || event.pointerId !== state.pointerId) return
+        event.preventDefault()
+        const next = clampPosition(
+          state.startLeft + (event.clientX - state.startX),
+          state.startTop + (event.clientY - state.startY),
+          readViewport(),
+        )
+        const moved = { x: next.left - state.baseLeft, y: next.top - state.baseTop }
+        offsetRef.current = moved
+        setOffset(moved)
+      }
+
+      /** Finish the drag and remember where the pad landed. */
+      const endDrag = (event) => {
+        const state = drag.current
+        if (state === null || event.pointerId !== state.pointerId) return
+        drag.current = null
+        if (typeof event.currentTarget.releasePointerCapture === 'function') {
+          event.currentTarget.releasePointerCapture(event.pointerId)
+        }
+        saveOffset(offsetRef.current)
+      }
+
       if (target === null || box === null) return null
 
-      const buttons = []
+      const base = basePosition(box, viewport)
+      const position = clampPosition(base.left + offset.x, base.top + offset.y, viewport)
+      geometry.current = { left: position.left, top: position.top, baseLeft: base.left, baseTop: base.top }
+
+      const cells = []
       for (const row of LAYOUT) {
         for (const id of row) {
-          if (id === null) continue
+          if (id === 'grip') {
+            cells.push(h('button', {
+              key: 'grip',
+              type: 'button',
+              className: 'dsh-terminal-keypad__grip',
+              style: { gridArea: 'grip' },
+              title: t('aria.drag'),
+              'aria-label': t('aria.drag'),
+              onPointerDown: startDrag,
+              onPointerMove: moveDrag,
+              onPointerUp: endDrag,
+              onPointerCancel: endDrag,
+              onContextMenu: (event) => event.preventDefault(),
+            }, h('svg', {
+              className: 'dsh-terminal-keypad__arrow',
+              viewBox: '0 0 16 16',
+              'aria-hidden': 'true',
+              focusable: 'false',
+            }, [[5, 4], [11, 4], [5, 8], [11, 8], [5, 12], [11, 12]].map(([cx, cy], index) => h('circle', {
+              key: index, cx, cy, r: 1.4, fill: 'currentColor',
+            })))))
+            continue
+          }
           const key = KEYS[id]
-          buttons.push(h('button', {
+          const glyph = key.arrow === true
+            ? h('svg', {
+              className: 'dsh-terminal-keypad__arrow',
+              viewBox: '0 0 16 16',
+              'aria-hidden': 'true',
+              focusable: 'false',
+            }, h('path', { d: ARROW_PATHS[id], fill: 'currentColor' }))
+            : key.text
+          cells.push(h('button', {
             key: id,
             type: 'button',
             className: 'dsh-terminal-keypad__key',
@@ -384,7 +543,7 @@ window.__ModuleLoader__.load({
               activate(id)
             },
             onContextMenu: (event) => event.preventDefault(),
-          }, key.text))
+          }, glyph))
         }
       }
 
@@ -396,8 +555,8 @@ window.__ModuleLoader__.load({
           role: 'group',
           'aria-label': t('label'),
           'data-terminal-keypad': '',
-          style: place(box, viewport),
-        }, buttons),
+          style: position,
+        }, cells),
       ), document.body)
     }
 
