@@ -76,10 +76,10 @@ terminal is never touched.
 
 ### First-run hint
 
-The first time the pad appears, small arrows and labels are drawn around it:
-**Page Up / Home / End / Page Down** next to the four arrow keys, and **symbol**
-above the symbol key. Press **Got it** (below the pad) and it stays away for
-good.
+The first time the pad appears, small double-chevron arrows are drawn around it,
+blinking gently, with **Page Up / Home / End / Page Down** beside the four arrow
+keys and **symbol** above the symbol key. Press **× Got it** at the pad's
+top-left corner and it stays away for good.
 
 ### Move it where you want
 
