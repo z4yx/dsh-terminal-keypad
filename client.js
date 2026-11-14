@@ -93,7 +93,7 @@ window.__ModuleLoader__.load({
     const MIN_TERMINAL = 48
     /** Delay before a held arrow key starts repeating, then its repeat period, in ms. */
     const REPEAT_DELAY = 420
-    const REPEAT_INTERVAL = 80
+    const REPEAT_INTERVAL = 160
 
     /**
      * Pad styles. Only host theme tokens, so light, dark and token overrides
