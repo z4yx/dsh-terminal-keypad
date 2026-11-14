@@ -6,7 +6,7 @@
 **Esc**、**Tab**、**Ctrl**、**回车**、可切换的符号键和四个方向键，并支持在
 方向键上向外滑动，改为发送 **Home / End / Page Up / Page Down**。
 
-![手机上悬浮在 bash 终端上、正好位于软键盘上方的按键面板](doc/Screenshot_2026-11-14.jpg)
+![手机上悬浮在 bash 终端上方、正好在软键盘上方的按键面板，首次打开时四周显示闪烁的箭头与 Page Up / Home / End / Page Down 标签，左上角是“× 知道了”](doc/Screenshot_2026-11-14.jpg)
 
 ## 布局
 

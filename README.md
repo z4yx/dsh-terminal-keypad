@@ -7,7 +7,7 @@ keys a phone's soft keyboard does not have — **Esc**, **Tab**, **Ctrl**, **Ent
 a switchable symbol key and the four arrow keys — and turns an outward slide on
 an arrow into **Home / End / Page Up / Page Down**.
 
-![The keypad floating over a bash terminal on a phone, just above the soft keyboard](doc/Screenshot_2026-11-14.jpg)
+![The keypad over a bash terminal on a phone, just above the soft keyboard, showing the first-run hint: blinking arrows with Page Up / Home / End / Page Down labels around the keys and an x Got it chip at the top-left](doc/Screenshot_2026-11-14.jpg)
 
 ## Layout
 
