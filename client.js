@@ -91,9 +91,12 @@ window.__ModuleLoader__.load({
     const SIZE = CELL * 3 + GAP * 2
     /** A terminal screen smaller than this is a thumbnail, not a usable anchor. */
     const MIN_TERMINAL = 48
-    /** Delay before a held arrow key starts repeating, then its repeat period, in ms. */
+    /** Delay before a held arrow key starts repeating, in ms. */
     const REPEAT_DELAY = 420
-    const REPEAT_INTERVAL = 160
+    /** The repeat period starts here, shrinks by REPEAT_ACCEL each time, and bottoms out here. */
+    const REPEAT_START = 160
+    const REPEAT_MIN = 80
+    const REPEAT_ACCEL = 0.85
 
     /**
      * Pad styles. Only host theme tokens, so light, dark and token overrides
@@ -442,8 +445,7 @@ window.__ModuleLoader__.load({
         const state = hold.current
         if (state === null) return
         hold.current = null
-        if (state.delay !== 0) window.clearTimeout(state.delay)
-        if (state.interval !== 0) window.clearInterval(state.interval)
+        if (state.timer !== 0) window.clearTimeout(state.timer)
         window.removeEventListener('pointerup', state.release, true)
         window.removeEventListener('pointercancel', state.release, true)
       }, [])
@@ -475,14 +477,21 @@ window.__ModuleLoader__.load({
         // keys stay single-shot: a held Esc or Tab is never what was meant.
         if (key.arrow !== true || event === undefined) return
         const pointerId = event.pointerId
-        const state = { delay: 0, interval: 0, release: null }
+        const state = { timer: 0, release: null }
+        let delay = REPEAT_START
+        // Speed up from REPEAT_START toward REPEAT_MIN instead of jumping
+        // straight to the fastest rate, the way a held key accelerates.
+        const tick = () => {
+          if (hold.current !== state) return
+          press(data)
+          delay = Math.max(REPEAT_MIN, Math.round(delay * REPEAT_ACCEL))
+          state.timer = window.setTimeout(tick, delay)
+        }
         state.release = (releaseEvent) => {
           if (releaseEvent.pointerId !== undefined && releaseEvent.pointerId !== pointerId) return
           stopHold()
         }
-        state.delay = window.setTimeout(() => {
-          state.interval = window.setInterval(() => press(data), REPEAT_INTERVAL)
-        }, REPEAT_DELAY)
+        state.timer = window.setTimeout(tick, REPEAT_DELAY)
         hold.current = state
         window.addEventListener('pointerup', state.release, true)
         window.addEventListener('pointercancel', state.release, true)
