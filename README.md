@@ -116,7 +116,12 @@ plugin_manager  action=remove_bundle  target=dsh-terminal-keypad
 - `client.js` registers one entry into the `shell.overlay` slot
   (id `terminal-keypad`) and portals its DOM to `document.body`: the overlay
   layer is `z-index: 20`, below a fullscreen right-sidebar panel at `z-index: 40`.
-- Input goes through the public Client terminal service,
+- Arrows, Home/End and PageUp/PageDown are delivered as key events to the
+  terminal's own xterm textarea rather than as fixed bytes, so xterm applies the
+  screen's current cursor-key mode. `less` and `vim` switch on DECCKM
+  (application cursor keys) and expect `ESC O A` there; a fixed `ESC [ A` is
+  ignored by them.
+- Input for the remaining keys goes through the public Client terminal service,
   `ctx.webTerminals.view(sessionId, tabId, contentId).write(data)`. It reuses the
   cached view the sidebar's terminal body already owns, so no second attachment
   competes for the terminal; writes are dropped while another page owns input
@@ -133,10 +138,10 @@ plugin_manager  action=remove_bundle  target=dsh-terminal-keypad
 | Esc | `ESC` |
 | Tab | `\t` |
 | `\|` | the symbol the key holds (`\|` by default) |
-| ▲ ▼ ◀ ▶ | `ESC[A` / `ESC[B` / `ESC[D` / `ESC[C` |
+| ▲ ▼ ◀ ▶ | `ESC[A`…`ESC[D`, or `ESC OA`…`ESC OD` under DECCKM |
 | Ctrl + arrow | `ESC[1;5A` … `ESC[1;5D` |
 | Ctrl + `\|` | the symbol's control byte when it has one (`0x1C` for `\|`) |
-| Home / End | `ESC[H` / `ESC[F` |
+| Home / End | `ESC[H` / `ESC[F`, or `ESC OH` / `ESC OF` under DECCKM |
 | Page Up / Page Down | `ESC[5~` / `ESC[6~` |
 
 ### Sticky Ctrl while typing

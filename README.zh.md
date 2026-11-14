@@ -108,7 +108,11 @@ plugin_manager  action=remove_bundle  target=dsh-terminal-keypad
 - `client.js` 向 `shell.overlay` 槽注册一个条目（id 为 `terminal-keypad`），并把
   DOM 通过 portal 挂到 `document.body`：overlay 层是 `z-index: 20`，低于全屏右侧
   面板的 `z-index: 40`。
-- 输入通过公开的 Client 终端服务发送：
+- 方向键、Home/End、PageUp/PageDown 以**按键事件**投递给终端自己的 xterm
+  textarea，而不是写死字节，这样 xterm 会按当前屏幕的 cursor-key 模式发送。
+  `less`、`vim` 会打开 DECCKM（application cursor keys），此时它们期望 `ESC O A`；
+  固定发 `ESC [ A` 会被它们忽略。
+- 其余按键的输入通过公开的 Client 终端服务发送：
   `ctx.webTerminals.view(sessionId, tabId, contentId).write(data)`。它复用侧栏终端
   自身已缓存的 view，不会创建第二个 attachment；当另一个页面占用输入时写入会被
   静默丢弃（终端自己的 "take control" 约定）。
@@ -123,10 +127,10 @@ plugin_manager  action=remove_bundle  target=dsh-terminal-keypad
 | Esc | `ESC` |
 | Tab | `\t` |
 | `\|` | 按键当前持有的符号（默认 `\|`） |
-| ▲ ▼ ◀ ▶ | `ESC[A` / `ESC[B` / `ESC[D` / `ESC[C` |
+| ▲ ▼ ◀ ▶ | `ESC[A`…`ESC[D`；DECCKM 下为 `ESC OA`…`ESC OD` |
 | Ctrl + 方向键 | `ESC[1;5A` … `ESC[1;5D` |
 | Ctrl + `\|` | 该符号对应的控制字节（`\|` 为 `0x1C`） |
-| Home / End | `ESC[H` / `ESC[F` |
+| Home / End | `ESC[H` / `ESC[F`；DECCKM 下为 `ESC OH` / `ESC OF` |
 | Page Up / Page Down | `ESC[5~` / `ESC[6~` |
 
 ### 粘滞 Ctrl 的字符转换

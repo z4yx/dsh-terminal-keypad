@@ -77,13 +77,13 @@ window.__ModuleLoader__.load({
     /** One keypad cell: what the user reads, its accessible name, and its bytes. */
     const KEYS = {
       tab: { text: 'Tab', label: 'aria.tab', plain: '\t', ctrl: '\t' },
-      up: { arrow: true, label: 'aria.up', plain: '\u001b[A', ctrl: '\u001b[1;5A' },
+      up: { arrow: true, label: 'aria.up', key: 'ArrowUp', code: 'ArrowUp', keyCode: 38, plain: '\u001b[A', ctrl: '\u001b[1;5A' },
       pipe: { symbol: true, label: 'aria.symbol' },
-      left: { arrow: true, label: 'aria.left', plain: '\u001b[D', ctrl: '\u001b[1;5D' },
+      left: { arrow: true, label: 'aria.left', key: 'ArrowLeft', code: 'ArrowLeft', keyCode: 37, plain: '\u001b[D', ctrl: '\u001b[1;5D' },
       escape: { text: 'Esc', label: 'aria.escape', plain: '\u001b', ctrl: '\u001b' },
-      right: { arrow: true, label: 'aria.right', plain: '\u001b[C', ctrl: '\u001b[1;5C' },
+      right: { arrow: true, label: 'aria.right', key: 'ArrowRight', code: 'ArrowRight', keyCode: 39, plain: '\u001b[C', ctrl: '\u001b[1;5C' },
       control: { text: 'Ctrl', label: 'aria.control', sticky: true },
-      down: { arrow: true, label: 'aria.down', plain: '\u001b[B', ctrl: '\u001b[1;5B' },
+      down: { arrow: true, label: 'aria.down', key: 'ArrowDown', code: 'ArrowDown', keyCode: 40, plain: '\u001b[B', ctrl: '\u001b[1;5B' },
     }
 
     /** The plus: arrows around Esc; Tab, | and Ctrl in the free corners; a grip last. */
@@ -103,10 +103,10 @@ window.__ModuleLoader__.load({
     const MIN_TERMINAL = 48
     /** What sliding outward from each arrow sends on release instead. */
     const SWIPE_KEYS = {
-      up: { text: 'PgUp', label: 'aria.pageup', data: '\u001b[5~' },
-      down: { text: 'PgDn', label: 'aria.pagedown', data: '\u001b[6~' },
-      left: { text: 'Home', label: 'aria.home', data: '\u001b[H' },
-      right: { text: 'End', label: 'aria.end', data: '\u001b[F' },
+      up: { text: 'PgUp', label: 'aria.pageup', key: 'PageUp', code: 'PageUp', keyCode: 33, data: '\u001b[5~' },
+      down: { text: 'PgDn', label: 'aria.pagedown', key: 'PageDown', code: 'PageDown', keyCode: 34, data: '\u001b[6~' },
+      left: { text: 'Home', label: 'aria.home', key: 'Home', code: 'Home', keyCode: 36, data: '\u001b[H' },
+      right: { text: 'End', label: 'aria.end', key: 'End', code: 'End', keyCode: 35, data: '\u001b[F' },
     }
     /** How far the pointer must travel outward before the arrow turns into its function key. */
     const SWIPE_DISTANCE = 13
@@ -320,11 +320,11 @@ window.__ModuleLoader__.load({
      * when the pane returns — the pad would stay hidden until a reload.
      * @returns the visible terminal rectangle, or null while none is on screen.
      */
-    function measureTerminal() {
+    function visibleTerminals() {
       const viewport = readViewport()
       const right = viewport.left + viewport.width
       const bottom = viewport.top + viewport.height
-      let best = null
+      const found = []
       for (const element of document.querySelectorAll('.xterm')) {
         const rect = element.getBoundingClientRect()
         const left = Math.max(rect.left, viewport.left)
@@ -341,17 +341,70 @@ window.__ModuleLoader__.load({
           [left + inset, visibleBottom - inset],
         ]
         if (!probes.some(([x, y]) => isPainted(x, y, element))) continue
-        const box = {
-          left: Math.round(left),
-          top: Math.round(top),
-          right: Math.round(visibleRight),
-          bottom: Math.round(visibleBottom),
-          width: Math.round(width),
-          height: Math.round(height),
-        }
-        if (best === null || box.width * box.height > best.width * best.height) best = box
+        found.push({
+          element,
+          box: {
+            left: Math.round(left),
+            top: Math.round(top),
+            right: Math.round(visibleRight),
+            bottom: Math.round(visibleBottom),
+            width: Math.round(width),
+            height: Math.round(height),
+          },
+        })
       }
-      return best
+      found.sort((a, b) => (b.box.width * b.box.height) - (a.box.width * a.box.height))
+      return found
+    }
+
+    /**
+     * Measure the terminal screen the user is looking at.
+     * @returns the largest visible terminal rectangle, or null.
+     */
+    function measureTerminal() {
+      const found = visibleTerminals()
+      return found.length === 0 ? null : found[0].box
+    }
+
+    /**
+     * Deliver a key through the terminal's own xterm instance.
+     *
+     * Writing raw bytes would freeze the cursor-key form the terminal happened
+     * to use when the pad was written. A real key event lets xterm apply the
+     * screen's current mode: in DECCKM (application cursor keys, which `less`
+     * turns on) it sends `ESC O A`, otherwise `ESC [ A`. The keypad, Home/End
+     * and PageUp/PageDown all need that switch to work inside pagers.
+     * @param spec - `key`, `code` and `keyCode` of the key to deliver.
+     * @param ctrl - whether Control is held.
+     * @returns whether an xterm screen accepted the event.
+     */
+    function dispatchTerminalKey(spec, ctrl) {
+      const found = visibleTerminals()
+      if (found.length === 0) return false
+      const textarea = found[0].element.querySelector('textarea.xterm-helper-textarea')
+      if (textarea === null) return false
+      const make = (type) => {
+        const event = new KeyboardEvent(type, {
+          key: spec.key,
+          code: spec.code,
+          bubbles: true,
+          cancelable: true,
+          composed: true,
+          ctrlKey: ctrl === true,
+          shiftKey: false,
+          altKey: false,
+          metaKey: false,
+        })
+        Object.defineProperty(event, 'keyCode', { configurable: true, get: () => spec.keyCode })
+        Object.defineProperty(event, 'which', { configurable: true, get: () => spec.keyCode })
+        return event
+      }
+      const down = make('keydown')
+      // Marked so the sticky-Ctrl interceptor below leaves its own events alone.
+      down.dshTerminalKeypad = true
+      textarea.dispatchEvent(down)
+      textarea.dispatchEvent(make('keyup'))
+      return true
     }
 
     /**
@@ -572,6 +625,21 @@ window.__ModuleLoader__.load({
         }
       }, [stopHold])
 
+      /** Deliver an arrow through xterm (so DECCKM applies), else as raw bytes. */
+      const sendArrow = React.useCallback((id, ctrl) => {
+        const spec = KEYS[id]
+        if (spec === undefined || typeof press !== 'function') return
+        if (dispatchTerminalKey(spec, ctrl)) return
+        press(ctrl ? spec.ctrl : spec.plain)
+      }, [press])
+
+      /** Deliver the swipe target (Home/End/PageUp/PageDown) through xterm. */
+      const sendSwipe = React.useCallback((spec) => {
+        if (typeof press !== 'function') return
+        if (dispatchTerminalKey(spec, false)) return
+        press(spec.data)
+      }, [press])
+
       const activate = React.useCallback((id, event) => {
         const key = KEYS[id]
         if (key === undefined) return
@@ -637,12 +705,13 @@ window.__ModuleLoader__.load({
           return
         }
 
-        const data = armed ? key.ctrl : key.plain
+        const ctrl = armed
         if (typeof setControl === 'function') setControl(false)
-        if (typeof press !== 'function' || data === undefined) return
+        if (typeof press !== 'function') return
         // Every key except an arrow sends on press.
         if (key.arrow !== true || event === undefined) {
-          press(data)
+          const data = ctrl ? key.ctrl : key.plain
+          if (data !== undefined) press(data)
           return
         }
 
@@ -652,7 +721,7 @@ window.__ModuleLoader__.load({
         const state = {
           pointerId: event.pointerId,
           arrow: id,
-          data,
+          ctrl,
           startX: event.clientX,
           startY: event.clientY,
           sent: false,
@@ -683,20 +752,20 @@ window.__ModuleLoader__.load({
           if (releaseEvent.pointerId !== undefined && releaseEvent.pointerId !== state.pointerId) return
           const swipe = state.swiped ? SWIPE_KEYS[state.arrow] : undefined
           const tap = !state.sent && !state.swiped
-          const send = swipe !== undefined ? swipe.data : tap ? state.data : undefined
           stopHold()
-          if (send !== undefined) press(send)
+          if (swipe !== undefined) sendSwipe(swipe)
+          else if (tap) sendArrow(state.arrow, state.ctrl)
         }
         /** Send the arrow, then repeat it: REPEAT_DELAY, then a ramp down to REPEAT_MIN. */
         const startRepeat = () => {
           state.timer = 0
           if (hold.current !== state || state.swiped) return
           state.sent = true
-          press(state.data)
+          sendArrow(state.arrow, state.ctrl)
           let delay = REPEAT_START
           const tick = () => {
             if (hold.current !== state) return
-            press(state.data)
+            sendArrow(state.arrow, state.ctrl)
             delay = Math.max(REPEAT_MIN, Math.round(delay * REPEAT_ACCEL))
             state.timer = window.setTimeout(tick, delay)
           }
@@ -707,7 +776,7 @@ window.__ModuleLoader__.load({
         window.addEventListener('pointerup', state.release, true)
         window.addEventListener('pointercancel', state.release, true)
         state.timer = window.setTimeout(startRepeat, TAP_GRACE)
-      }, [armed, press, setControl, stopHold, symbol])
+      }, [armed, press, setControl, stopHold, symbol, sendArrow, sendSwipe])
 
       /** Begin dragging from the grip; the keys keep their press-to-send behaviour. */
       const startDrag = (event) => {
@@ -988,6 +1057,7 @@ window.__ModuleLoader__.load({
            * @param event - the document keydown captured before xterm sees it.
            */
           const onKeyDown = (event) => {
+            if (event.dshTerminalKeypad === true) return
             if (!control.get()) return
             if (event.isComposing === true || event.keyCode === 229) return
             const element = document.activeElement
