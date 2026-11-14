@@ -2,29 +2,13 @@
 
 English | [中文](README.zh.md)
 
-A floating, almost transparent keypad for the DSH Web terminal. It supplies the
-keys a phone's soft keyboard does not have — **Esc**, **Tab**, **Ctrl**, **Enter**,
-a switchable symbol key and the four arrow keys — and turns an outward slide on
-an arrow into **Home / End / Page Up / Page Down**.
+A translucent keypad floating over the DSH Web terminal. It supplies the keys a
+phone's soft keyboard lacks — **Esc**, **Tab**, **Ctrl**, **Enter**, a symbol key
+and the four arrow keys — and sliding outward on an arrow key sends
+**Home / End / Page Up / Page Down**. Holding the centre **Esc** key also drags
+the pad.
 
-![The keypad over a bash terminal on a phone, just above the soft keyboard, showing the first-run hint: blinking arrows with Page Up / Home / End / Page Down labels around the keys and an x Got it chip at the top-left](doc/Screenshot_2026-11-14.jpg)
-
-## Layout
-
-```
-      ┌─────┬─────┬─────┐
-      │ Tab │  ▲  │  |  │
-      ├─────┼─────┼─────┤
-      │  ◀  │ Esc │  ▶  │
-      ├─────┼─────┼─────┤
-      │Ctrl │  ▼  │  ↵  │
-      └─────┴─────┴─────┘
-```
-
-The four arrow keys form a plus around **Esc**. **Tab** sits in the upper-left
-corner, the symbol key in the upper-right, **Ctrl** in the lower-left and
-**Enter** in the lower-right. The centre **Esc** key doubles as the pad's drag
-handle.
+![The keypad above the terminal, just above the soft keyboard; on first run it shows blinking arrows and Page Up / Home / End / Page Down labels around the keys](doc/Screenshot_2026-11-14.jpg)
 
 ## What you can do
 

@@ -6,7 +6,7 @@
 **Esc**、**Tab**、**Ctrl**、**回车**、符号和四个方向键，并支持在
 方向键上向外滑动来发送 **Home / End / Page Up / Page Down**。按住中间的 **Esc** 键还可以拖动面板。
 
-![悬浮在终端上方、正好在软键盘上方的按键面板，首次打开时四周显示闪烁的箭头与 Page Up / Home / End / Page Down 标签”](doc/Screenshot_2026-11-14.jpg)
+![悬浮在终端上方、正好在软键盘上方的按键面板，首次打开时四周显示闪烁的箭头与 Page Up / Home / End / Page Down 标签](doc/Screenshot_2026-11-14.jpg)
 
 
 ## 能做什么
