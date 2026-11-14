@@ -1,0 +1,5 @@
+# One Host row so the bundle has an activation of its own. Every behavior of
+# this plugin lives in its Client half (./client.js); this row owns nothing.
+- insert:
+    - id: terminal-keypad
+      name: dsh-terminal-keypad

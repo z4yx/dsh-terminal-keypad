@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Terminal keypad",
+    "description": "Floats a translucent keypad over the terminal with Esc, Tab, Ctrl, | and the four arrow keys. The arrows form a plus around Esc, and Tab, | and Ctrl fill its free corners."
+  }
+}
