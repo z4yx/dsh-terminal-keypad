@@ -2,11 +2,11 @@
 
 [English](README.md) | 中文
 
-一个悬浮在 DSH Web 终端上的、近乎透明的按键面板。它补齐手机软键盘没有的
-**Esc**、**Tab**、**Ctrl**、**回车**、可切换的符号键和四个方向键，并支持在
-方向键上向外滑动，改为发送 **Home / End / Page Up / Page Down**。按住中间的 **Esc** 键可以拖动面板。
+一个悬浮在 DSH Web 终端上的半透明的按键面板。它补齐手机软键盘没有的
+**Esc**、**Tab**、**Ctrl**、**回车**、符号和四个方向键，并支持在
+方向键上向外滑动来发送 **Home / End / Page Up / Page Down**。按住中间的 **Esc** 键还可以拖动面板。
 
-![手机上悬浮在 bash 终端上方、正好在软键盘上方的按键面板，首次打开时四周显示闪烁的箭头与 Page Up / Home / End / Page Down 标签，左上角是“× 知道了”](doc/Screenshot_2026-11-14.jpg)
+![悬浮在终端上方、正好在软键盘上方的按键面板，首次打开时四周显示闪烁的箭头与 Page Up / Home / End / Page Down 标签”](doc/Screenshot_2026-11-14.jpg)
 
 
 ## 能做什么
