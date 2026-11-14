@@ -16,6 +16,11 @@ A floating, translucent keypad over the DSH Web terminal.
   so they stay crisp at any font, size or zoom level. Holding an arrow repeats
   it after ~420 ms, starting at a 160 ms period and speeding up step by step to 80 ms, the way a physical arrow key does. Esc, Tab,
   `|` and Ctrl stay single-shot.
+- Slide **outward** from an arrow (≥26 px in that arrow's direction) and release to
+  send a function key instead: left → **Home**, right → **End**, up → **Page Up**,
+  down → **Page Down**. The key shows the function name while you slide. A short
+  90 ms gate makes sure the arrow itself is not sent first, because a stray Up in a
+  shell rewrites the command line from history.
 - **Tab** sits in the upper-left corner, **|** in the upper-right, **Ctrl** in the
   lower-left.
 - The lower-right cell is a **drag grip** (⠿): drag it to move the pad anywhere on

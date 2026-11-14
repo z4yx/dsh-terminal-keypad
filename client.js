@@ -40,6 +40,10 @@ window.__ModuleLoader__.load({
       'aria.left': '左方向键',
       'aria.right': '右方向键',
       'aria.drag': '拖动移动按键面板',
+      'aria.home': 'Home 键（行首）',
+      'aria.end': 'End 键（行尾）',
+      'aria.pageup': 'Page Up 键（上翻页）',
+      'aria.pagedown': 'Page Down 键（下翻页）',
     }
 
     /** English copy. */
@@ -54,6 +58,10 @@ window.__ModuleLoader__.load({
       'aria.left': 'Arrow left',
       'aria.right': 'Arrow right',
       'aria.drag': 'Drag to move the keypad',
+      'aria.home': 'Home (start of line)',
+      'aria.end': 'End (end of line)',
+      'aria.pageup': 'Page Up',
+      'aria.pagedown': 'Page Down',
     }
 
     /** Solid triangles, so the arrow keys stay crisp at any font or zoom. */
@@ -91,6 +99,21 @@ window.__ModuleLoader__.load({
     const SIZE = CELL * 3 + GAP * 2
     /** A terminal screen smaller than this is a thumbnail, not a usable anchor. */
     const MIN_TERMINAL = 48
+    /** What sliding outward from each arrow sends on release instead. */
+    const SWIPE_KEYS = {
+      up: { text: 'PgUp', label: 'aria.pageup', data: '\u001b[5~' },
+      down: { text: 'PgDn', label: 'aria.pagedown', data: '\u001b[6~' },
+      left: { text: 'Home', label: 'aria.home', data: '\u001b[H' },
+      right: { text: 'End', label: 'aria.end', data: '\u001b[F' },
+    }
+    /** How far the pointer must travel outward before the arrow turns into its function key. */
+    const SWIPE_DISTANCE = 26
+    /**
+     * Delay before an arrow sends. A touch that slides outward within this
+     * window must not also send the arrow: in a shell, a stray Up rewrites the
+     * command line from history.
+     */
+    const TAP_GRACE = 90
     /** Delay before a held arrow key starts repeating, in ms. */
     const REPEAT_DELAY = 420
     /** The repeat period starts here, shrinks by REPEAT_ACCEL each time, and bottoms out here. */
@@ -107,7 +130,7 @@ window.__ModuleLoader__.load({
       '.dsh-terminal-keypad{position:fixed;z-index:1000;display:grid;',
       'grid-template-columns:repeat(3,', CELL, 'px);grid-template-rows:repeat(3,', CELL, 'px);',
       'grid-template-areas:"tab up pipe" "left escape right" "control down grip";gap:', GAP, 'px;',
-      'user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;touch-action:manipulation}',
+      'user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;touch-action:none}',
       '.dsh-terminal-keypad__key{box-sizing:border-box;display:flex;align-items:center;justify-content:center;',
       'width:', CELL, 'px;height:', CELL, 'px;padding:0;border-radius:9px;',
       'border:1px solid color-mix(in srgb,var(--dsw-alias-border-l2) 82%,transparent);',
@@ -115,7 +138,7 @@ window.__ModuleLoader__.load({
       'color:var(--dsw-alias-label-primary);',
       'font:600 12px/1 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;',
       'text-shadow:0 0 2px var(--dsw-alias-bg-base);',
-      'box-shadow:0 1px 4px rgba(0,0,0,.12);cursor:pointer;touch-action:manipulation;',
+      'box-shadow:0 1px 4px rgba(0,0,0,.12);cursor:pointer;touch-action:none;',
       'transition:background-color 120ms ease,transform 80ms ease}',
       '.dsh-terminal-keypad__key:hover{background:color-mix(in srgb,var(--dsw-alias-bg-overlay) 50%,transparent)}',
       '.dsh-terminal-keypad__key:active{transform:scale(.94)}',
@@ -123,6 +146,9 @@ window.__ModuleLoader__.load({
       'background:color-mix(in srgb,var(--dsw-alias-brand-primary) 32%,transparent)}',
       '.dsh-terminal-keypad__key:focus-visible{outline:2px solid var(--dsw-alias-brand-primary);outline-offset:2px}',
       '.dsh-terminal-keypad__arrow{display:block;width:16px;height:16px}',
+      '.dsh-terminal-keypad__swipe{font-size:10px;line-height:1;letter-spacing:-.02em}',
+      '.dsh-terminal-keypad__key.dsh-terminal-keypad__key--swipe{border-color:var(--dsw-alias-brand-primary);',
+      'background:color-mix(in srgb,var(--dsw-alias-brand-primary) 30%,transparent)}',
       '.dsh-terminal-keypad__grip{display:flex;align-items:center;justify-content:center;box-sizing:border-box;',
       'width:', CELL, 'px;height:', CELL, 'px;padding:0;border:0;border-radius:9px;background:transparent;',
       'color:var(--dsw-alias-label-secondary);opacity:.55;cursor:grab;touch-action:none;',
@@ -423,6 +449,8 @@ window.__ModuleLoader__.load({
       const viewport = useVisualViewport()
       const box = useTerminalBox()
       const [offset, setOffset] = React.useState(readOffset)
+      /** The arrow whose outward slide currently shows its function key. */
+      const [swiped, setSwiped] = React.useState(null)
       /** The running auto-repeat of a held arrow key, or null. */
       const hold = React.useRef(null)
       /** Latest rendered geometry, so a drag starts from what the user sees. */
@@ -446,8 +474,10 @@ window.__ModuleLoader__.load({
         if (state === null) return
         hold.current = null
         if (state.timer !== 0) window.clearTimeout(state.timer)
+        window.removeEventListener('pointermove', state.move, true)
         window.removeEventListener('pointerup', state.release, true)
         window.removeEventListener('pointercancel', state.release, true)
+        setSwiped(null)
       }, [])
 
       React.useEffect(() => {
@@ -471,30 +501,73 @@ window.__ModuleLoader__.load({
         const data = armed ? key.ctrl : key.plain
         if (typeof setControl === 'function') setControl(false)
         if (typeof press !== 'function' || data === undefined) return
-        press(data)
-        stopHold()
-        // Holding an arrow key repeats it, like a physical arrow key. Other
-        // keys stay single-shot: a held Esc or Tab is never what was meant.
-        if (key.arrow !== true || event === undefined) return
-        const pointerId = event.pointerId
-        const state = { timer: 0, release: null }
-        let delay = REPEAT_START
-        // Speed up from REPEAT_START toward REPEAT_MIN instead of jumping
-        // straight to the fastest rate, the way a held key accelerates.
-        const tick = () => {
-          if (hold.current !== state) return
+        // Every key except an arrow sends on press.
+        if (key.arrow !== true || event === undefined) {
           press(data)
-          delay = Math.max(REPEAT_MIN, Math.round(delay * REPEAT_ACCEL))
-          state.timer = window.setTimeout(tick, delay)
+          return
+        }
+
+        // An arrow waits TAP_GRACE before sending: a touch that slides outward
+        // becomes Home/End/PgUp/PgDn instead, and must not also send the arrow.
+        stopHold()
+        const state = {
+          pointerId: event.pointerId,
+          arrow: id,
+          data,
+          startX: event.clientX,
+          startY: event.clientY,
+          sent: false,
+          swiped: false,
+          timer: 0,
+          move: null,
+          release: null,
+        }
+        const cancelTimer = () => {
+          if (state.timer === 0) return
+          window.clearTimeout(state.timer)
+          state.timer = 0
+        }
+        state.move = (moveEvent) => {
+          if (moveEvent.pointerId !== state.pointerId || state.swiped) return
+          const dx = moveEvent.clientX - state.startX
+          const dy = moveEvent.clientY - state.startY
+          const outward = state.arrow === 'up' ? dy <= -SWIPE_DISTANCE
+            : state.arrow === 'down' ? dy >= SWIPE_DISTANCE
+              : state.arrow === 'left' ? dx <= -SWIPE_DISTANCE
+                : dx >= SWIPE_DISTANCE
+          if (!outward) return
+          state.swiped = true
+          cancelTimer()
+          setSwiped(state.arrow)
         }
         state.release = (releaseEvent) => {
-          if (releaseEvent.pointerId !== undefined && releaseEvent.pointerId !== pointerId) return
+          if (releaseEvent.pointerId !== undefined && releaseEvent.pointerId !== state.pointerId) return
+          const swipe = state.swiped ? SWIPE_KEYS[state.arrow] : undefined
+          const tap = !state.sent && !state.swiped
+          const send = swipe !== undefined ? swipe.data : tap ? state.data : undefined
           stopHold()
+          if (send !== undefined) press(send)
         }
-        state.timer = window.setTimeout(tick, REPEAT_DELAY)
+        /** Send the arrow, then repeat it: REPEAT_DELAY, then a ramp down to REPEAT_MIN. */
+        const startRepeat = () => {
+          state.timer = 0
+          if (hold.current !== state || state.swiped) return
+          state.sent = true
+          press(state.data)
+          let delay = REPEAT_START
+          const tick = () => {
+            if (hold.current !== state) return
+            press(state.data)
+            delay = Math.max(REPEAT_MIN, Math.round(delay * REPEAT_ACCEL))
+            state.timer = window.setTimeout(tick, delay)
+          }
+          state.timer = window.setTimeout(tick, REPEAT_DELAY)
+        }
         hold.current = state
+        window.addEventListener('pointermove', state.move, true)
         window.addEventListener('pointerup', state.release, true)
         window.addEventListener('pointercancel', state.release, true)
+        state.timer = window.setTimeout(startRepeat, TAP_GRACE)
       }, [armed, press, setControl, stopHold])
 
       /** Begin dragging from the grip; the keys keep their press-to-send behaviour. */
@@ -575,21 +648,27 @@ window.__ModuleLoader__.load({
             continue
           }
           const key = KEYS[id]
-          const glyph = key.arrow === true
-            ? h('svg', {
-              className: 'dsh-terminal-keypad__arrow',
-              viewBox: '0 0 16 16',
-              'aria-hidden': 'true',
-              focusable: 'false',
-            }, h('path', { d: ARROW_PATHS[id], fill: 'currentColor' }))
-            : key.text
+          const swipe = SWIPE_KEYS[id]
+          const showing = swiped === id && swipe !== undefined
+          const glyph = showing
+            ? h('span', { className: 'dsh-terminal-keypad__swipe' }, swipe.text)
+            : key.arrow === true
+              ? h('svg', {
+                className: 'dsh-terminal-keypad__arrow',
+                viewBox: '0 0 16 16',
+                'aria-hidden': 'true',
+                focusable: 'false',
+              }, h('path', { d: ARROW_PATHS[id], fill: 'currentColor' }))
+              : key.text
           cells.push(h('button', {
             key: id,
             type: 'button',
-            className: 'dsh-terminal-keypad__key',
+            className: showing
+              ? 'dsh-terminal-keypad__key dsh-terminal-keypad__key--swipe'
+              : 'dsh-terminal-keypad__key',
             style: { gridArea: id },
-            title: t(key.label),
-            'aria-label': t(key.label),
+            title: t(showing ? swipe.label : key.label),
+            'aria-label': t(showing ? swipe.label : key.label),
             'aria-pressed': key.sticky === true ? String(armed) : undefined,
             onPointerDown: (event) => {
               event.preventDefault()
