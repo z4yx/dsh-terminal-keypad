@@ -32,7 +32,7 @@ lower-right cell is the drag grip.
 | **▲ ▼ ◀ ▶** | move the cursor | keep moving | **Page Up / Page Down / Home / End** |
 | **Esc** | send Escape | — | — |
 | **Tab** | send Tab | — | — |
-| **`\|`** | type a pipe | — | — |
+| **`\|`** | type the current symbol | — | slide up to pick another symbol |
 | **Ctrl** | arm Ctrl | — | — |
 | **⠿** | — | drag the pad | — |
 
@@ -52,6 +52,13 @@ Touch an arrow and slide it outward, then release:
 
 The key shows the function key's name while you slide, and the arrow itself is
 not sent first, so a slide never moves the cursor or rewrites your shell history.
+
+### Slide up on the symbol key to pick another symbol
+
+The key in the upper-right is not fixed to `|`. Slide up on it and a small picker
+of common terminal symbols opens — pipes, redirects, quotes, brackets, operators
+and more. Tap one and the key takes it, ready for the next press, and the choice
+is remembered for next time. A plain press still types the symbol the key holds.
 
 ### Ctrl is sticky
 
@@ -123,10 +130,10 @@ plugin_manager  action=remove_bundle  target=dsh-terminal-keypad
 |---|---|
 | Esc | `ESC` |
 | Tab | `\t` |
-| `\|` | `\|` |
+| `\|` | the symbol the key holds (`\|` by default) |
 | ▲ ▼ ◀ ▶ | `ESC[A` / `ESC[B` / `ESC[D` / `ESC[C` |
 | Ctrl + arrow | `ESC[1;5A` … `ESC[1;5D` |
-| Ctrl + `\|` | `0x1C` (Ctrl+\\) |
+| Ctrl + `\|` | the symbol's control byte when it has one (`0x1C` for `\|`) |
 | Home / End | `ESC[H` / `ESC[F` |
 | Page Up / Page Down | `ESC[5~` / `ESC[6~` |
 
@@ -151,6 +158,7 @@ Constants at the top of `client.js`:
 | `REPEAT_START` / `REPEAT_MIN` | 160 / 80 ms | first repeat period / fastest period |
 | `REPEAT_ACCEL` | 0.85 | period multiplier per repeat |
 | `OFFSET_KEY` | `dsh-terminal-keypad:offset.v1` | `localStorage` key of the drag offset |
+| `SYMBOL_KEY` | `dsh-terminal-keypad:symbol.v1` | `localStorage` key of the chosen symbol |
 
 </details>
 

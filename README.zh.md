@@ -30,7 +30,7 @@
 | **▲ ▼ ◀ ▶** | 移动光标 | 持续移动 | **Page Up / Page Down / Home / End** |
 | **Esc** | 发送 Escape | — | — |
 | **Tab** | 发送 Tab | — | — |
-| **`\|`** | 输入竖线 | — | — |
+| **`\|`** | 输入当前符号 | — | 上滑选择其它符号 |
 | **Ctrl** | 选中 Ctrl | — | — |
 | **⠿** | — | 拖动面板 | — |
 
@@ -49,6 +49,12 @@
 
 滑动过程中键面会显示对应的功能键名称，而且不会先把方向键发出去，所以滑动不会
 移动光标或改写你的 shell 历史。
+
+### 在符号键上滑选择其它符号
+
+右上角那个键并不固定是 `|`。在它上面向上滑动会弹出一个常用终端符号选择面板
+——管道、重定向、引号、括号、运算符等。点一个符号，按键就换成它，下次直接按即可，
+选择会被记住；普通点按仍然输入当前符号。
 
 ### Ctrl 是粘滞修饰键
 
@@ -115,10 +121,10 @@ plugin_manager  action=remove_bundle  target=dsh-terminal-keypad
 |---|---|
 | Esc | `ESC` |
 | Tab | `\t` |
-| `\|` | `\|` |
+| `\|` | 按键当前持有的符号（默认 `\|`） |
 | ▲ ▼ ◀ ▶ | `ESC[A` / `ESC[B` / `ESC[D` / `ESC[C` |
 | Ctrl + 方向键 | `ESC[1;5A` … `ESC[1;5D` |
-| Ctrl + `\|` | `0x1C`（Ctrl+\\） |
+| Ctrl + `\|` | 该符号对应的控制字节（`\|` 为 `0x1C`） |
 | Home / End | `ESC[H` / `ESC[F` |
 | Page Up / Page Down | `ESC[5~` / `ESC[6~` |
 
@@ -142,6 +148,7 @@ plugin_manager  action=remove_bundle  target=dsh-terminal-keypad
 | `REPEAT_START` / `REPEAT_MIN` | 160 / 80 ms | 首次重复间隔 / 最快间隔 |
 | `REPEAT_ACCEL` | 0.85 | 每次重复的间隔乘数 |
 | `OFFSET_KEY` | `dsh-terminal-keypad:offset.v1` | 拖动偏移的 `localStorage` 键 |
+| `SYMBOL_KEY` | `dsh-terminal-keypad:symbol.v1` | 所选符号的 `localStorage` 键 |
 
 </details>
 

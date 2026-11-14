@@ -34,7 +34,8 @@ window.__ModuleLoader__.load({
       'aria.escape': 'Esc 键',
       'aria.tab': 'Tab 键',
       'aria.control': 'Ctrl 修饰键，先按它，再按方向键、竖线或直接敲字母',
-      'aria.pipe': '竖线 |',
+      'aria.symbol': '符号 {symbol}，上滑可选择其它终端符号',
+      'aria.symbolMenu': '选择终端符号',
       'aria.up': '上方向键',
       'aria.down': '下方向键',
       'aria.left': '左方向键',
@@ -52,7 +53,8 @@ window.__ModuleLoader__.load({
       'aria.escape': 'Escape',
       'aria.tab': 'Tab',
       'aria.control': 'Control modifier: arm it, then press an arrow or the pipe key, or type a character',
-      'aria.pipe': 'Pipe |',
+      'aria.symbol': 'Symbol {symbol}; slide up to pick another terminal symbol',
+      'aria.symbolMenu': 'Choose a terminal symbol',
       'aria.up': 'Arrow up',
       'aria.down': 'Arrow down',
       'aria.left': 'Arrow left',
@@ -76,7 +78,7 @@ window.__ModuleLoader__.load({
     const KEYS = {
       tab: { text: 'Tab', label: 'aria.tab', plain: '\t', ctrl: '\t' },
       up: { arrow: true, label: 'aria.up', plain: '\u001b[A', ctrl: '\u001b[1;5A' },
-      pipe: { text: '|', label: 'aria.pipe', plain: '|', ctrl: '\u001c' },
+      pipe: { symbol: true, label: 'aria.symbol' },
       left: { arrow: true, label: 'aria.left', plain: '\u001b[D', ctrl: '\u001b[1;5D' },
       escape: { text: 'Esc', label: 'aria.escape', plain: '\u001b', ctrl: '\u001b' },
       right: { arrow: true, label: 'aria.right', plain: '\u001b[C', ctrl: '\u001b[1;5C' },
@@ -108,6 +110,23 @@ window.__ModuleLoader__.load({
     }
     /** How far the pointer must travel outward before the arrow turns into its function key. */
     const SWIPE_DISTANCE = 13
+    /** The terminal symbols the key can hold; the current one is its byte. */
+    const SYMBOLS = [
+      '|', '&', ';', '<', '>', '~',
+      '$', '#', '*', '?', '!', '=',
+      '+', '-', '^', '@', '%', '/',
+      '(', ')', '[', ']', '{', '}',
+      '\\', ':', "'", '"', '`', ',',
+    ]
+    /** The picker's grid: cell size, gap and padding, and the box they add up to. */
+    const MENU_CELL = 30
+    const MENU_GAP = 4
+    const MENU_PAD = 6
+    const MENU_WIDTH = (MENU_CELL * 6) + (MENU_GAP * 5) + (MENU_PAD * 2)
+    const MENU_HEIGHT = (MENU_CELL * 5) + (MENU_GAP * 4) + (MENU_PAD * 2)
+    /** Local storage key of the symbol the key currently holds. */
+    const SYMBOL_KEY = 'dsh-terminal-keypad:symbol.v1'
+
     /**
      * Delay before an arrow sends. A touch that slides outward within this
      * window must not also send the arrow: in a shell, a stray Up rewrites the
@@ -147,6 +166,18 @@ window.__ModuleLoader__.load({
       '.dsh-terminal-keypad__key:focus-visible{outline:2px solid var(--dsw-alias-brand-primary);outline-offset:2px}',
       '.dsh-terminal-keypad__arrow{display:block;width:16px;height:16px}',
       '.dsh-terminal-keypad__swipe{font-size:10px;line-height:1;letter-spacing:-.02em}',
+      '.dsh-terminal-keypad__menu{position:absolute;display:grid;grid-template-columns:repeat(6,', MENU_CELL, 'px);',
+      'grid-auto-rows:', MENU_CELL, 'px;gap:', MENU_GAP, 'px;padding:', MENU_PAD, 'px;border-radius:10px;',
+      'border:1px solid color-mix(in srgb,var(--dsw-alias-border-l2) 70%,transparent);',
+      'background:color-mix(in srgb,var(--dsw-alias-bg-overlay) 74%,transparent);',
+      '-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);box-shadow:0 6px 20px rgba(0,0,0,.18)}',
+      '.dsh-terminal-keypad__symbol{display:flex;align-items:center;justify-content:center;',
+      'width:', MENU_CELL, 'px;height:', MENU_CELL, 'px;padding:0;border:1px solid transparent;border-radius:6px;',
+      'background:transparent;color:var(--dsw-alias-label-primary);',
+      'font:600 13px/1 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;cursor:pointer;touch-action:none}',
+      '.dsh-terminal-keypad__symbol:hover{background:color-mix(in srgb,var(--dsw-alias-bg-overlay) 45%,transparent)}',
+      '.dsh-terminal-keypad__symbol--current{border-color:var(--dsw-alias-brand-primary);',
+      'background:color-mix(in srgb,var(--dsw-alias-brand-primary) 28%,transparent)}',
       '.dsh-terminal-keypad__key.dsh-terminal-keypad__key--swipe{border-color:var(--dsw-alias-brand-primary);',
       'background:color-mix(in srgb,var(--dsw-alias-brand-primary) 30%,transparent)}',
       '.dsh-terminal-keypad__grip{display:flex;align-items:center;justify-content:center;box-sizing:border-box;',
@@ -189,6 +220,7 @@ window.__ModuleLoader__.load({
         case '_': return '\u001f'
         case '@': return '\u0000'
         case '?': return '\u007f'
+        case '|': return '\u001c'
         case ' ': return '\u0000'
         case '/': return '\u001f'
         default: return null
@@ -405,6 +437,32 @@ window.__ModuleLoader__.load({
     }
 
     /**
+     * Read the saved symbol key.
+     * @returns the stored symbol when it is one of {@link SYMBOLS}, else `|`.
+     */
+    function readSymbol() {
+      try {
+        const raw = window.localStorage.getItem(SYMBOL_KEY)
+        if (raw !== null && SYMBOLS.includes(raw)) return raw
+      } catch (error) {
+        // Storage can be unavailable; the default wins.
+      }
+      return '|'
+    }
+
+    /**
+     * Remember the symbol key for the next visit.
+     * @param symbol - the symbol to store.
+     */
+    function saveSymbol(symbol) {
+      try {
+        window.localStorage.setItem(SYMBOL_KEY, symbol)
+      } catch (error) {
+        // A full or blocked storage is not worth failing the choice over.
+      }
+    }
+
+    /**
      * The pad's default spot: inside the terminal's lower-right corner.
      * @param box - the visible terminal rectangle, or null for the screen corner.
      * @param viewport - the visual viewport box.
@@ -451,6 +509,9 @@ window.__ModuleLoader__.load({
       const [offset, setOffset] = React.useState(readOffset)
       /** The arrow whose outward slide currently shows its function key. */
       const [swiped, setSwiped] = React.useState(null)
+      /** The symbol the symbol key holds, and whether its picker is open. */
+      const [symbol, setSymbol] = React.useState(readSymbol)
+      const [menuOpen, setMenuOpen] = React.useState(false)
       /** The running auto-repeat of a held arrow key, or null. */
       const hold = React.useRef(null)
       /** Latest rendered geometry, so a drag starts from what the user sees. */
@@ -498,6 +559,60 @@ window.__ModuleLoader__.load({
           if (typeof setControl === 'function') setControl(!armed)
           return
         }
+        if (key.symbol === true) {
+          // The symbol key: slide up to open the symbol picker, a plain press
+          // sends the symbol it currently holds (Ctrl turns it into a control
+          // byte when the symbol has one, e.g. | -> 0x1c).
+          const chosen = armed ? (controlByte(symbol) ?? symbol) : symbol
+          if (typeof setControl === 'function') setControl(false)
+          if (typeof press !== 'function') return
+          if (event === undefined) {
+            press(chosen)
+            return
+          }
+          stopHold()
+          const state = {
+            pointerId: event.pointerId,
+            data: chosen,
+            startY: event.clientY,
+            sent: false,
+            opened: false,
+            timer: 0,
+            move: null,
+            release: null,
+          }
+          const cancel = () => {
+            if (state.timer === 0) return
+            window.clearTimeout(state.timer)
+            state.timer = 0
+          }
+          state.move = (moveEvent) => {
+            if (moveEvent.pointerId !== state.pointerId || state.opened) return
+            if (moveEvent.clientY - state.startY > -SWIPE_DISTANCE) return
+            state.opened = true
+            cancel()
+            setMenuOpen(true)
+          }
+          state.release = (releaseEvent) => {
+            if (releaseEvent.pointerId !== undefined && releaseEvent.pointerId !== state.pointerId) return
+            const send = !state.sent && !state.opened
+            stopHold()
+            if (send) press(state.data)
+          }
+          const fire = () => {
+            state.timer = 0
+            if (hold.current !== state || state.opened) return
+            state.sent = true
+            press(state.data)
+          }
+          hold.current = state
+          window.addEventListener('pointermove', state.move, true)
+          window.addEventListener('pointerup', state.release, true)
+          window.addEventListener('pointercancel', state.release, true)
+          state.timer = window.setTimeout(fire, TAP_GRACE)
+          return
+        }
+
         const data = armed ? key.ctrl : key.plain
         if (typeof setControl === 'function') setControl(false)
         if (typeof press !== 'function' || data === undefined) return
@@ -568,7 +683,25 @@ window.__ModuleLoader__.load({
         window.addEventListener('pointerup', state.release, true)
         window.addEventListener('pointercancel', state.release, true)
         state.timer = window.setTimeout(startRepeat, TAP_GRACE)
-      }, [armed, press, setControl, stopHold])
+      }, [armed, press, setControl, stopHold, symbol])
+
+      /** Choose a symbol: the key keeps it, the picker closes. */
+      const chooseSymbol = (next) => {
+        setSymbol(next)
+        saveSymbol(next)
+        setMenuOpen(false)
+      }
+
+      React.useEffect(() => {
+        if (!menuOpen) return undefined
+        const dismiss = (event) => {
+          const element = event.target
+          if (element instanceof Element && element.closest('[data-terminal-keypad-menu]') !== null) return
+          setMenuOpen(false)
+        }
+        document.addEventListener('pointerdown', dismiss, true)
+        return () => document.removeEventListener('pointerdown', dismiss, true)
+      }, [menuOpen])
 
       /** Begin dragging from the grip; the keys keep their press-to-send behaviour. */
       const startDrag = (event) => {
@@ -650,16 +783,19 @@ window.__ModuleLoader__.load({
           const key = KEYS[id]
           const swipe = SWIPE_KEYS[id]
           const showing = swiped === id && swipe !== undefined
+          const label = key.symbol === true ? t(key.label, { symbol }) : t(key.label)
           const glyph = showing
             ? h('span', { className: 'dsh-terminal-keypad__swipe' }, swipe.text)
-            : key.arrow === true
-              ? h('svg', {
-                className: 'dsh-terminal-keypad__arrow',
-                viewBox: '0 0 16 16',
-                'aria-hidden': 'true',
-                focusable: 'false',
-              }, h('path', { d: ARROW_PATHS[id], fill: 'currentColor' }))
-              : key.text
+            : key.symbol === true
+              ? symbol
+              : key.arrow === true
+                ? h('svg', {
+                  className: 'dsh-terminal-keypad__arrow',
+                  viewBox: '0 0 16 16',
+                  'aria-hidden': 'true',
+                  focusable: 'false',
+                }, h('path', { d: ARROW_PATHS[id], fill: 'currentColor' }))
+                : key.text
           cells.push(h('button', {
             key: id,
             type: 'button',
@@ -667,8 +803,8 @@ window.__ModuleLoader__.load({
               ? 'dsh-terminal-keypad__key dsh-terminal-keypad__key--swipe'
               : 'dsh-terminal-keypad__key',
             style: { gridArea: id },
-            title: t(showing ? swipe.label : key.label),
-            'aria-label': t(showing ? swipe.label : key.label),
+            title: showing ? t(swipe.label) : label,
+            'aria-label': showing ? t(swipe.label) : label,
             'aria-pressed': key.sticky === true ? String(armed) : undefined,
             onPointerDown: (event) => {
               event.preventDefault()
@@ -679,6 +815,13 @@ window.__ModuleLoader__.load({
         }
       }
 
+      const menuStyle = menuOpen
+        ? {
+          left: Math.round(clamp(position.left, viewport.left + 8, viewport.left + viewport.width - MENU_WIDTH - 8) - position.left),
+          top: Math.round(clamp(position.top - MENU_HEIGHT - 8, viewport.top + 8, viewport.top + viewport.height - MENU_HEIGHT - 8) - position.top),
+        }
+        : null
+
       return createPortal(h(React.Fragment, null,
         h('style', { key: 'style', dangerouslySetInnerHTML: { __html: STYLE } }),
         h('div', {
@@ -688,7 +831,28 @@ window.__ModuleLoader__.load({
           'aria-label': t('label'),
           'data-terminal-keypad': '',
           style: position,
-        }, cells),
+        }, cells, menuOpen ? h('div', {
+          key: 'menu',
+          className: 'dsh-terminal-keypad__menu',
+          'data-terminal-keypad-menu': '',
+          role: 'group',
+          'aria-label': t('aria.symbolMenu'),
+          style: menuStyle,
+        }, SYMBOLS.map((item) => h('button', {
+          key: item,
+          type: 'button',
+          className: item === symbol
+            ? 'dsh-terminal-keypad__symbol dsh-terminal-keypad__symbol--current'
+            : 'dsh-terminal-keypad__symbol',
+          title: item,
+          'aria-label': item,
+          'aria-pressed': item === symbol ? 'true' : undefined,
+          onPointerDown: (event) => {
+            event.preventDefault()
+            chooseSymbol(item)
+          },
+          onContextMenu: (event) => event.preventDefault(),
+        }, item))) : null),
       ), document.body)
     }
 
