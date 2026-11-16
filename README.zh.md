@@ -1,8 +1,8 @@
 # dsh-terminal-keypad
 
-[English](README.md) | 中文
-
 [![Listed on dsh-plugin.org](https://dsh-plugin.org/badges/listed.svg)](https://dsh-plugin.org/plugins/z4yx/dsh-terminal-keypad)
+
+[English](README.md) | 中文
 
 一个悬浮在 DSH Web 终端上的半透明的按键面板。它补齐手机软键盘没有的
 **Esc**、**Tab**、**Ctrl**、**回车**、符号和四个方向键，并支持在

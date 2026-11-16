@@ -1,5 +1,7 @@
 # dsh-terminal-keypad
 
+[![Listed on dsh-plugin.org](https://dsh-plugin.org/badges/listed.svg)](https://dsh-plugin.org/plugins/z4yx/dsh-terminal-keypad)
+
 English | [中文](README.zh.md)
 
 A translucent keypad floating over the DSH Web terminal. It supplies the keys a
